@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -13,11 +14,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,6 +35,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -42,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -75,141 +82,78 @@ import java.util.Locale
 @Composable
 fun MainNavigation(userViewModel: UserViewModel) {
     val navController = rememberNavController()
+
     NavHost(navController, startDestination = "greeting") {
         composable("greeting") { Greeting(navController, userViewModel) }
-       composable("login") { LoginScreen(navController, userViewModel) }
-        composable("mainApp") { MyApp(userViewModel) }
-
+        composable("login") { LoginScreen(navController, userViewModel) }
+        composable("mainApp") { MyApp(userViewModel, PaddingValues()) }
     }
 }
 
+@Preview
+@Composable
+fun NavigationBarSample() {
+    var selectedItem by remember { mutableIntStateOf(0) }
+    val items = listOf("Main", "Afiliate", "Catalogo")
 
+    NavigationBar {
+        items.forEachIndexed { index, item ->
+            NavigationBarItem(
+                icon = { Icon(Icons.Filled.Favorite, contentDescription = item) },
+                label = { Text(item) },
+                selected = selectedItem == index,
+                onClick = { selectedItem = index }
+            )
+        }
+    }
+}
 
 @Composable
 fun Greeting(navController: NavHostController, userViewModel: UserViewModel) {
     Column(modifier = Modifier.padding(16.dp)) {
-
-        LoginScreen(navController, userViewModel)
+Inicio(navController, userViewModel)
+        MyApp(userViewModel, PaddingValues())
+        //LoginScreen(navController, userViewModel)
     }
-    }
-
+}
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyApp(userViewModel: UserViewModel) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-    val navController = rememberNavController()
-    val context = LocalContext.current
-    val apiService = remember { ApiService(context) }
-    val responseText by remember { mutableStateOf("Response will be shown here") }
-    val isLoading by remember { mutableStateOf(false) }
-    var apiPartnersResponse by remember { mutableStateOf<ApiResponsePartners?>(null) }
-    var showExitDialog by remember { mutableStateOf(false) }
+fun MyApp(userViewModel: UserViewModel, contentPadding: PaddingValues) {
     PlesappTheme {
-    LaunchedEffect(Unit) {
-        scope.launch {
-            apiService.authenticate()
-            apiPartnersResponse = apiService.getApiPartners()
-        }
-    }
-
-    BackHandler(enabled = true) {
-        showExitDialog = true
-    }
-
-    if (showExitDialog) {
-        Dialog(
-            onDismissRequest = { showExitDialog = false },
-            properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
-        ) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth()
-                ) {
-                    Text(
-                        "¿Estás seguro de cerrar tu sesión?",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        Button(
-                            onClick = {
-                                userViewModel.logout()
-                                navController.popBackStack()
-                                navController.navigate("greeting")
-                                showExitDialog = false
-
-                                // Reiniciar la Activity para refrescar la aplicación
-                                val activity = (context as? Activity)
-                                activity?.finish()
-                                activity?.startActivity(activity.intent)
-                                Toast.makeText(context, "Adiós", Toast.LENGTH_LONG).show()
-                                //activity?.overridePendingTransition(0, 0)
-                            },
-                        ) {
-                            Text("Sí, adiós", color = Color.White)
-                        }
-                        Button(
-                            onClick = { showExitDialog = false },
-                        ) {
-                            Text("Cancelar", color = Color.White)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                DrawerContent(navController, drawerState, userViewModel)
-            }
-        }
-    ) {
         Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Serfineg") },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            scope.launch {
-                                drawerState.open()
-                            }
-                        }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
-                        }
-                    }
-                )
-            }
-        ) { innerPadding ->
-            Box(modifier = Modifier.padding(innerPadding)) {
-                NavigationHost(
-                    navController,
-                    apiService,
-                    responseText,
-                    isLoading,
-                    scope,
-                    apiPartnersResponse,
-                    userViewModel
-                )
-            }
-        }
-    }
+            bottomBar = {
+                NavigationBar {
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Filled.Favorite, contentDescription = "Favorite") },
+                        label = { Text("Favorite") },
+                        selected = false,
+                        onClick = { /* Acción al seleccionar */ }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Filled.Favorite, contentDescription = "Afiliate") },
+                        label = { Text("Afiliate") },
+                        selected = false,
+                        onClick = { /* Acción al seleccionar */ }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Filled.Favorite, contentDescription = "Catalogo") },
+                        label = { Text("Catalogo") },
+                        selected = false,
+                        onClick = { /* Acción al seleccionar */ }
+                    )
+                }
+            },
+            content = { innerPadding ->
+                Box(Modifier.padding(innerPadding)) {
+                    // Contenido de la pantalla
+                }
+            },
+            modifier = Modifier.padding(contentPadding)
+        )
     }
 }
-
 @Composable
 fun NavigationHost(
     navController: NavHostController,
@@ -268,84 +212,25 @@ fun NavigationHost(
         }
     }
 }
-    @Composable
-    fun DrawerContent(
-        navController: NavHostController,
-        drawerState: DrawerState,
-        userViewModel: UserViewModel
-    ) {
-        val scope = rememberCoroutineScope()
-        val userState by userViewModel.userState.collectAsState()
-        val context = LocalContext.current
-
-        if (userState != null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(16.dp)
-            ) {
-                Text("SERFINEG", modifier = Modifier.padding(16.dp))
-                HorizontalDivider()
-                val drawerItems = listOf("Inicio", "Perfil", "Inversiones") // "Crowdfunding", "Noticias"
-                drawerItems.forEach { item ->
-                    NavigationDrawerItem(
-                        label = { Text(item) },
-                        selected = false,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate(item.lowercase(Locale.getDefault()))
-                            }
-                        },
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-                Button(
-                    onClick = {
-                        scope.launch {
-                            userViewModel.logout()
-                            drawerState.close()
-
-                            // Navegar a "greeting"
-                            navController.navigate("greeting") {
-                                popUpTo("greeting") {
-                                    inclusive = true
-                                }
-                            }
-
-                            // Reiniciar la actividad
-                            val activity = (context as? Activity)
-                            activity?.let {
-                                it.finish()
-                                it.startActivity(it.intent)
-                                // it.overridePendingTransition(0, 1)
-                                Toast.makeText(context, "Adiós", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Cerrar sesión")
-                }
-            }
-        }
-    }
-
 
 
 @Composable
-fun WelcomeAndList(navController: NavHostController,
-                   apiService: ApiService, responseText: String,
-                   loading: Boolean, scope: CoroutineScope,
-                   apiPartnersResponse: ApiResponsePartners?,
-                   userViewModel: UserViewModel) {
+fun WelcomeAndList(
+    navController: NavHostController,
+    apiService: ApiService, responseText: String,
+    loading: Boolean, scope: CoroutineScope,
+    apiPartnersResponse: ApiResponsePartners?,
+    userViewModel: UserViewModel
+) {
 
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(navController: NavHostController,
-                userViewModel: UserViewModel) {
+fun LoginScreen(
+    navController: NavHostController,
+    userViewModel: UserViewModel
+) {
 
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -373,7 +258,7 @@ fun LoginScreen(navController: NavHostController,
             label = { Text("Nombre de usuario") },
             modifier = Modifier.fillMaxWidth(),
             colors = TextFieldDefaults.textFieldColors(
-              //  textColor = Color.Black,
+                //  textColor = Color.Black,
                 cursorColor = Orange40,
                 focusedIndicatorColor = Orange40,
                 unfocusedIndicatorColor = OrangeGrey40,
@@ -394,7 +279,7 @@ fun LoginScreen(navController: NavHostController,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
             colors = TextFieldDefaults.textFieldColors(
-               // textColor = Color.Black,
+                // textColor = Color.Black,
                 cursorColor = Orange40,
                 focusedIndicatorColor = Orange40,
                 unfocusedIndicatorColor = OrangeGrey40,
@@ -442,20 +327,24 @@ fun LoginScreen(navController: NavHostController,
                                     val foundRecord = filteredRecords?.find { it.name == username }
                                     if (foundRecord != null) {
                                         if (foundRecord.passwordApp == password) {
-                                            userViewModel.setUser(User(
-                                                foundRecord.id.toString(),
-                                                foundRecord.name,
-                                                foundRecord.email,
-                                                foundRecord.phone,
-                                            ))
+                                            userViewModel.setUser(
+                                                User(
+                                                    foundRecord.id.toString(),
+                                                    foundRecord.name,
+                                                    foundRecord.email,
+                                                    foundRecord.phone,
+                                                )
+                                            )
 
 
                                             navController.navigate("mainApp")
                                         } else {
-                                            errorLogin = "Contraseña incorrecta para el usuario $username"
+                                            errorLogin =
+                                                "Contraseña incorrecta para el usuario $username"
                                         }
                                     } else {
-                                        errorLogin = "No se encontró ningún usuario con el nombre de usuario $username"
+                                        errorLogin =
+                                            "No se encontró ningún usuario con el nombre de usuario $username"
                                     }
                                 }
                             }
@@ -472,11 +361,66 @@ fun LoginScreen(navController: NavHostController,
             colors = ButtonDefaults.buttonColors(
                 containerColor = Orange40
             )
+
+
         ) {
             Text(
                 text = if (isLoading) "Cargando..." else "Acceder",
                 color = if (isLoading) Color.Gray else Color.White
             )
+        }
+    }
+}
+
+
+@Composable
+fun Inicio( navController: NavHostController,
+            userViewModel: UserViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "PLATAFORMA LATINOAMERICA ECONOMICA Y SOCIAL     LUNES A VIERNES DE 09:00 A 19:00, SABADO DE 09:00 A 14:00",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        ) {
+            Text(
+                text = "Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "529511433017",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            IconButton(
+                onClick = { /* Abrir Facebook */ },
+                modifier = Modifier.size(24.dp)
+            ) {
+               // Icon(
+                 //   imageVector = Icons.Filled.Facebook,
+                   // contentDescription = "Facebook"
+                //)
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Button(
+                onClick = { /* Abrir enlace */ },
+                modifier = Modifier.size(24.dp)
+            ) {
+                Text(
+                    text = "Enlace",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }
