@@ -95,6 +95,7 @@ class ApiService(private val context: Context) {
         }
     }
 
+
     suspend fun getApiPartners(): ApiResponsePartners? {
         val url = HttpUrl.Builder()
             .scheme("https")
