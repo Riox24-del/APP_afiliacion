@@ -28,12 +28,14 @@ data class RecordPartner(
     val name: String?,
     val email: String?,
     val phone: String?,
+    @SerialName("nombre_usuario_app")
+    val nameUserApp: String?,
     @SerialName("password_app")
     val passwordApp: String?
 )
 @Serializable
 data class ApiResponsePartners(
-    val records: List<RecordPartner>
+    val partners: List<RecordPartner>
 )
 
 
@@ -57,8 +59,6 @@ class ApiService(private val context: Context) {
         val sharedPreferences = context.getSharedPreferences("MyPreferences", Context.MODE_PRIVATE)
         return sharedPreferences.getString("sessionCookie", null)
     }
-
-
 
     suspend fun authenticate(): String {
         val authRequest = Request.Builder()
@@ -96,16 +96,12 @@ class ApiService(private val context: Context) {
     }
 
 
+
     suspend fun getApiPartners(): ApiResponsePartners? {
         val url = HttpUrl.Builder()
             .scheme("https")
             .host(host)
-            .addPathSegment("send_request")
-            .addQueryParameter("model", "res.partner")
-            .addQueryParameter("fields", "name")
-            .addQueryParameter("fields", "email")
-            .addQueryParameter("fields", "phone")
-            .addQueryParameter("fields", "password_app")
+            .addPathSegment("get_partners_acceso_app_movil")
             .build()
 
         val requestBuilder = Request.Builder()
