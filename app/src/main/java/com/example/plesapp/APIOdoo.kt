@@ -1,24 +1,15 @@
 package com.example.plesapp
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import okhttp3.HttpUrl
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
 import org.json.JSONObject
 import java.io.IOException
 
@@ -28,11 +19,10 @@ data class RecordPartner(
     val name: String?,
     val email: String?,
     val phone: String?,
-    @SerialName("nombre_usuario_app")
-    val nameUserApp: String?,
     @SerialName("password_app")
-    val passwordApp: String?
+    val x_studio_passwordapp: String?
 )
+
 @Serializable
 data class ApiResponsePartners(
     val partners: List<RecordPartner>
@@ -45,6 +35,7 @@ class ApiService(private val context: Context) {
     private val usuario: String = "admin"
     private val contrasena: String = "admin"
     private val authUrl = "https://pruebas.stples.mx/odoo_connect"
+    private val registerUrl = "https://pruebas.stples.mx/api/create_portal_user"
     private val host = "pruebas.stples.mx"
 
     private fun saveSessionCookie(context: Context, sessionCookie: String) {
@@ -55,15 +46,10 @@ class ApiService(private val context: Context) {
         }
     }
 
-    private fun getSessionCookie(context: Context): String? {
-        val sharedPreferences = context.getSharedPreferences("MyPreferences", Context.MODE_PRIVATE)
-        return sharedPreferences.getString("sessionCookie", null)
-    }
-
     suspend fun authenticate(): String {
         val authRequest = Request.Builder()
             .url(authUrl)
-            .addHeader("db", "inversiones")
+            .addHeader("db", "afiliacion")
             .addHeader("login", usuario)
             .addHeader("password", contrasena)
             .build()
@@ -95,43 +81,39 @@ class ApiService(private val context: Context) {
         }
     }
 
+    suspend fun createPortalUser(
+        email: String,
+        name: String,
+        password: String,
+        phone: String,
+        companyId: Int
+    ): String {
+        val jsonPayload = JSONObject()
+        jsonPayload.put("token", apiKey)
+        jsonPayload.put("email", email)
+        jsonPayload.put("name", name)
+        jsonPayload.put("password", password)
+        jsonPayload.put("phone", phone)
+        jsonPayload.put("company_id", companyId)
 
-
-    suspend fun getApiPartners(): ApiResponsePartners? {
-        val url = HttpUrl.Builder()
-            .scheme("https")
-            .host(host)
-            .addPathSegment("get_partners_acceso_app_movil")
+        val request = Request.Builder()
+            .url(registerUrl)
+            .post(RequestBody.create("application/json".toMediaType(), jsonPayload.toString()))
+            .addHeader("Content-Type", "application/json")
             .build()
-
-        val requestBuilder = Request.Builder()
-            .url(url)
-            .addHeader("login", usuario)
-            .addHeader("password", contrasena)
-            .addHeader("api-key", apiKey)
-
-        val sessionCookie = getSessionCookie(context)
-        sessionCookie?.let {
-            requestBuilder.addHeader("Cookie", it)
-        }
-
-        val request = requestBuilder.build()
 
         return withContext(Dispatchers.IO) {
             try {
                 val response = clientAPI.newCall(request).execute()
                 if (response.isSuccessful) {
-                    response.body?.string()?.let { responseBody ->
-                        Json.decodeFromString<ApiResponsePartners>(responseBody)
-                    }
+                    "User created successfully"
                 } else {
-                    println("Request failed: ${response.code}")
-                    null
+                    "Failed to create user: ${response.code}"
                 }
             } catch (e: IOException) {
-                println("Request failed: ${e.message}")
-                null
+                "Failed to create user: ${e.message}"
             }
         }
     }
+
 }

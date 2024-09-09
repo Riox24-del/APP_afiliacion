@@ -26,10 +26,12 @@ class UserViewModel() : ViewModel() {
         }
     }
 
+
+
     fun setUser(user: User) {
         viewModelScope.launch {
             _userState.emit(user)
         }
     }
 }
-data class User(val id: String?, val name: String?, val email: String?, val phone: String?, val nameUserApp: String)
+data class User(val id: String?, val name: String?, val email: String?, val phone: String?)

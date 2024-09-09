@@ -4,6 +4,7 @@ package com.example.plesapp
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
+import android.util.Patterns
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -149,17 +150,14 @@ fun Greeting(navController: NavHostController, userViewModel: UserViewModel) {
     }
 }
 
-
-
-
 @Composable
 fun LoginScreen(navController: NavHostController, userViewModel: UserViewModel) {
-    var username by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val apiService = remember { ApiService(context) }
-    var errorUsername by remember { mutableStateOf("") }
+    var errorEmail by remember { mutableStateOf("") }
     var errorPassword by remember { mutableStateOf("") }
     var errorLogin by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
@@ -169,7 +167,7 @@ fun LoginScreen(navController: NavHostController, userViewModel: UserViewModel) 
             .fillMaxSize()
             .background(Color(0xFFF2F2F2))
             .padding(16.dp)
-            .verticalScroll(rememberScrollState()), // Habilitando el scroll
+            .verticalScroll(rememberScrollState()),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -187,19 +185,20 @@ fun LoginScreen(navController: NavHostController, userViewModel: UserViewModel) 
             Spacer(modifier = Modifier.height(16.dp))
 
             TextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text("Nombre de usuario") },
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Correo electrónico") },
                 modifier = Modifier.fillMaxWidth(),
-                isError = errorUsername.isNotEmpty(),
+                isError = errorEmail.isNotEmpty(),
                 colors = TextFieldDefaults.colors(
                     contentColorFor(backgroundColor = Color.White),
                     focusedIndicatorColor = Color(0xFFFFA726),
                     focusedLabelColor = Color(0xFFFFA726),
-                )
+                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
-            if (errorUsername.isNotEmpty()) {
-                Text(text = errorUsername, color = Color.Red, fontSize = 12.sp)
+            if (errorEmail.isNotEmpty()) {
+                Text(text = errorEmail, color = Color.Red, fontSize = 12.sp)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -233,48 +232,28 @@ fun LoginScreen(navController: NavHostController, userViewModel: UserViewModel) 
                 onClick = {
                     if (!isLoading) {
                         scope.launch {
-                            errorUsername = ""
+                            errorEmail = ""
                             errorPassword = ""
                             errorLogin = ""
 
                             // Validación de campos
-                            if (username.isBlank()) {
-                                errorUsername = "El nombre de usuario no puede estar en blanco"
+                            if (email.isBlank()) {
+                                errorEmail = "El correo electrónico no puede estar en blanco"
+                            } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                                errorEmail = "Correo electrónico no válido"
                             }
                             if (password.isBlank()) {
                                 errorPassword = "La contraseña no puede estar en blanco"
                             }
 
-                            if (errorUsername.isEmpty() && errorPassword.isEmpty()) {
+                            if (errorEmail.isEmpty() && errorPassword.isEmpty()) {
                                 isLoading = true
                                 try {
-                                    // Llama a authenticate sin parámetros
                                     val authMessage = apiService.authenticate()
                                     if (authMessage == "Authentication successful") {
-                                        val authUser = apiService.getApiPartners()
-                                        val filteredRecords = authUser?.partners
-                                        val foundRecord = filteredRecords?.find { it.nameUserApp == username }
-                                        if (foundRecord != null) {
-                                            if (foundRecord.passwordApp == password) {
-                                                userViewModel.setUser(User(
-                                                    foundRecord.id.toString(),
-                                                    foundRecord.name,
-                                                    foundRecord.email,
-                                                    foundRecord.phone,
-                                                    nameUserApp = foundRecord.nameUserApp!!
 
-                                                ))
-
-                                                // Navegar a la pantalla principal
-                                                navController.navigate("inicio")
-                                                Toast.makeText(context, "Bienvenid@", Toast.LENGTH_SHORT).show()
-                                                //navController.navigate("mainApp")
-                                            } else {
-                                                errorLogin = "Contraseña incorrecta para el usuario $username"
-                                            }
-                                        } else {
-                                            errorLogin = "No se encontró ningún usuario con el nombre de usuario $username"
-                                        }
+                                        navController.navigate("inicio")
+                                        Toast.makeText(context, "Bienvenid@", Toast.LENGTH_SHORT).show()
                                     } else {
                                         errorLogin = "Usuario o contraseña incorrectos"
                                     }
@@ -302,6 +281,7 @@ fun LoginScreen(navController: NavHostController, userViewModel: UserViewModel) 
         }
     }
 }
+
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -352,7 +332,6 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
-
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(
                     text = "Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax.",
@@ -364,7 +343,6 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Divider(color = Color.Gray, thickness = 1.dp)
                 Spacer(modifier = Modifier.height(8.dp))
-
                 Text(
                     text = "Teléfono: 529511433017",
                     style = MaterialTheme.typography.bodyMedium.copy(
@@ -375,7 +353,6 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Divider(color = Color.Gray, thickness = 1.dp)
                 Spacer(modifier = Modifier.height(8.dp))
-
                 OutlinedButton(
                     onClick = {
                         val intent =
@@ -393,9 +370,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 ) {
                     Text("Facebook")
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
-
                 OutlinedButton(
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://plesmx.com/"))
@@ -418,9 +393,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                         textAlign = TextAlign.Center
                     )
                 }
-
                 Spacer(modifier = Modifier.height(24.dp))
-
                 OutlinedButton(
                     onClick = {
                         navController.navigate("login")
@@ -521,7 +494,7 @@ fun AfiliateForm() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()) // Asegura el scroll
             .padding(16.dp)
     ) {
         Text("Formulario de Afiliación", style = MaterialTheme.typography.titleMedium)
@@ -636,7 +609,6 @@ fun AfiliateForm() {
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = direccion,
@@ -644,7 +616,6 @@ fun AfiliateForm() {
             label = { Text("Dirección") },
             modifier = Modifier.fillMaxWidth()
         )
-
         Spacer(modifier = Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(
@@ -660,11 +631,13 @@ fun AfiliateForm() {
             label = { Text("Ocupación") },
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(modifier = Modifier.height(10.dp))
 
-        Spacer(modifier = Modifier.height(32.dp))
-// Botones de Cancelar y Enviar
+        // Botones de Cancelar y Enviar
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Button(
@@ -683,9 +656,11 @@ fun AfiliateForm() {
                 Text("Enviar")
             }
         }
-        Spacer(modifier = Modifier.width(160.dp))
+
+        Spacer(modifier = Modifier.height(80.dp))
     }
 }
+
 
 @Composable
 fun GrupoForm() {

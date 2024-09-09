@@ -72,4 +72,5 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation(kotlin("script-runtime"))
+    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.3.1")
 }
