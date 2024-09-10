@@ -86,15 +86,31 @@ class ApiService(private val context: Context) {
         name: String,
         password: String,
         phone: String,
-        companyId: Int
+        companyId: Int,
+        fechaNacimiento: String,
+        curp: String,
+        sexo: String,
+        estadoCivil: String,
+        direccion: String,
+        grupoSocial: Boolean,
+        ocupacion: String,
+        //token: String?
     ): String {
-        val jsonPayload = JSONObject()
-        jsonPayload.put("token", apiKey)
-        jsonPayload.put("email", email)
-        jsonPayload.put("name", name)
-        jsonPayload.put("password", password)
-        jsonPayload.put("phone", phone)
-        jsonPayload.put("company_id", companyId)
+        val jsonPayload = JSONObject().apply {
+           // put("token", token ?: apiKey)
+            put("email", email)
+            put("name", name)
+            put("password", password)
+            put("phone", phone)
+            put("company_id", companyId)
+            put("x_studio_fecha_de_nacimiento", fechaNacimiento)
+            put("x_studio_curp_1", curp)
+            put("x_studio_sexo_1", sexo)
+            put("x_studio_estado_civil_1", estadoCivil)
+            put("x_studio_direccion", direccion)
+            put("x_studio_grupo_social", grupoSocial)
+            put("x_studio_ocupacion", ocupacion)
+        }
 
         val request = Request.Builder()
             .url(registerUrl)
@@ -115,5 +131,6 @@ class ApiService(private val context: Context) {
             }
         }
     }
+
 
 }

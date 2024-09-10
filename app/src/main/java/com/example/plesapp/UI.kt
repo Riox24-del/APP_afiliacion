@@ -2,6 +2,7 @@ package com.example.plesapp
 
 
 import android.annotation.SuppressLint
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.util.Patterns
@@ -71,11 +72,17 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 
 @Composable
@@ -488,8 +495,55 @@ fun AfiliateForm() {
     var direccion by remember { mutableStateOf("") }
     var perteneceGrupoSocial by remember { mutableStateOf(false) }
     var ocupacion by remember { mutableStateOf("") }
-    val sexOptions = listOf("Hombre", "Mujer", "Prefiero no especificar")
-    val estadoCivilOptions = listOf("Soltero", "Casado", "Divorciado", "Viudo", "Unión libre")
+    var message by remember { mutableStateOf("") }
+    var isError by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
+    // Función para mostrar el DatePickerDialog
+    fun showDatePicker() {
+        val calendar = Calendar.getInstance()
+        val datePicker = DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val selectedDate = Calendar.getInstance().apply {
+                    set(year, month, dayOfMonth)
+                }
+                fechaNacimiento = dateFormatter.format(selectedDate.time)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+        datePicker.show()
+    }
+    suspend fun submitForm() {
+        val apiService = ApiService(context)
+        val responseMessage = try {
+            val response = apiService.createPortalUser(
+                email = correo,
+                name = nombre,
+                password = "1234", // Aquí deberías obtener el password de alguna manera segura
+                phone = telefono,
+                companyId = 1, // Asume que este es el ID de la empresa
+                fechaNacimiento = fechaNacimiento,
+                curp = curp,
+                sexo = selectedSex,
+                estadoCivil = selectedEstadoCivil,
+                direccion = direccion,
+                grupoSocial = perteneceGrupoSocial,
+                ocupacion = ocupacion
+            )
+            response // Mensaje de respuesta del API
+        } catch (e: Exception) {
+            isError = true
+            "Error: ${e.message}"
+        }
+
+        // Actualizar el mensaje con la respuesta del servidor
+        message = responseMessage
+    }
 
     Column(
         modifier = Modifier
@@ -547,6 +601,7 @@ fun AfiliateForm() {
                 expanded = isSexDropdownExpanded,
                 onDismissRequest = { isSexDropdownExpanded = false }
             ) {
+                val sexOptions = listOf("Hombre", "Mujer", "Prefiero no especificar")
                 sexOptions.forEach { label ->
                     DropdownMenuItem(
                         text = { Text(text = label) },
@@ -562,10 +617,12 @@ fun AfiliateForm() {
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = fechaNacimiento,
-            onValueChange = { fechaNacimiento = it },
+            onValueChange = { /* No permitas que el usuario edite directamente */ },
+            readOnly = true,
             label = { Text("Fecha de Nacimiento") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showDatePicker() }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -598,6 +655,7 @@ fun AfiliateForm() {
                 expanded = isEstadoCivilDropdownExpanded,
                 onDismissRequest = { isEstadoCivilDropdownExpanded = false }
             ) {
+                val estadoCivilOptions = listOf("Soltero", "Casado", "Divorciado", "Viudo", "Unión libre")
                 estadoCivilOptions.forEach { label ->
                     DropdownMenuItem(
                         text = { Text(text = label) },
@@ -609,6 +667,7 @@ fun AfiliateForm() {
                 }
             }
         }
+
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
             value = direccion,
@@ -650,16 +709,33 @@ fun AfiliateForm() {
             Spacer(modifier = Modifier.width(16.dp))
 
             Button(
-                onClick = { /* Acción de enviar */ },
+                onClick = {
+                    // Llamar a la función submitForm dentro de una corrutina
+                    CoroutineScope(Dispatchers.Main).launch {
+                        submitForm()
+                    }
+                },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Enviar")
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Mostrar el mensaje de éxito o error
+        if (message.isNotEmpty()) {
+            Text(
+                text = message,
+                color = if (isError) Color.Red else Color.Green,
+                //style = MaterialTheme.typography.body1
+            )
+        }
         Spacer(modifier = Modifier.height(80.dp))
     }
 }
+
+
 
 
 @Composable
@@ -742,7 +818,7 @@ fun GrupoForm() {
                 Text("Enviar")
             }
         }
-        Spacer(modifier = Modifier.height(80.dp))
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }
 
