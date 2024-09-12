@@ -487,6 +487,7 @@ fun AfiliateForm() {
     var nombre by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -512,6 +513,11 @@ fun AfiliateForm() {
                 isError = true
                 false
             }
+            password.isBlank() -> {
+                message = "La contraseña es obligatoria."
+                isError = true
+                false
+            }
             !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches() -> {
                 message = "El correo electrónico no es válido."
                 isError = true
@@ -532,20 +538,24 @@ fun AfiliateForm() {
                 val response = apiService.createPortalUser(
                     email = correo,
                     name = nombre,
-                    password = "1234",
+                    password = password,
                     phone = telefono,
                     companyId = 1
                 )
-                response
+
+                if (response) {
+                    "Usuario creado exitosamente"
+                } else {
+                    "Error: el servidor no pudo procesar la solicitud."
+                }
             } catch (e: Exception) {
                 isError = true
-                "Error: ${e.message}"
+                "Error inesperado: ${e.message}"
             } finally {
                 isLoading = false
             }
 
-            // Actualizar el mensaje con la respuesta del servidor
-            message = responseMessage.toString()
+            message = responseMessage
         }
     }
 
@@ -566,9 +576,6 @@ fun AfiliateForm() {
             modifier = Modifier.fillMaxWidth(),
             isError = nombre.isBlank()
         )
-        if (nombre.isBlank()) {
-            Text(text = "El nombre es obligatorio.", color = Color.Red)
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -580,11 +587,6 @@ fun AfiliateForm() {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             isError = correo.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()
         )
-        if (correo.isBlank()) {
-            Text(text = "El correo es obligatorio.", color = Color.Red)
-        } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
-            Text(text = "El correo electrónico no es válido.", color = Color.Red)
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -596,9 +598,19 @@ fun AfiliateForm() {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             isError = telefono.isBlank()
         )
-        if (telefono.isBlank()) {
-            Text(text = "El teléfono es obligatorio.", color = Color.Red)
-        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Campo de contraseña
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Contraseña") },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = PasswordVisualTransformation(), // La contraseña siempre está oculta
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            isError = password.isBlank()
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -610,7 +622,7 @@ fun AfiliateForm() {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Button(
-                onClick = { /* Implementar acción de cancelar, por ejemplo, navegar a otra pantalla */ },
+                onClick = {  },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Cancelar")
@@ -620,7 +632,6 @@ fun AfiliateForm() {
 
             Button(
                 onClick = {
-                    // Llamar a la función submitForm
                     if (!isLoading) {
                         submitForm()
                     }
@@ -647,12 +658,15 @@ fun AfiliateForm() {
             Text(
                 text = message,
                 color = if (isError) Color.Red else Color.Green,
-              //  style = MaterialTheme.typography.body1
+                style = MaterialTheme.typography.bodyMedium
             )
         }
+
         Spacer(modifier = Modifier.height(80.dp))
     }
 }
+
+
 
 
 

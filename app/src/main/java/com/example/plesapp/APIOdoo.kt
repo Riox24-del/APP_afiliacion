@@ -37,7 +37,6 @@ class ApiService(private val context: Context) {
     private val authUrl = "https://pruebas.stples.mx/odoo_connect"
     private val registerUrl = "https://pruebas.stples.mx/api/create_portal_user"
     private val host = "pruebas.stples.mx"
-
     private fun saveSessionCookie(context: Context, sessionCookie: String) {
         val sharedPreferences = context.getSharedPreferences("MyPreferences", Context.MODE_PRIVATE)
         with(sharedPreferences.edit()) {
@@ -63,7 +62,8 @@ class ApiService(private val context: Context) {
                         if (cookie.startsWith("session_id")) {
                             val endIndex = cookie.indexOf(";")
                             val sessionCookie = if (endIndex != -1) {
-                                "session_id=" + cookie.substringAfter("session_id=").substringBefore(";")
+                                "session_id=" + cookie.substringAfter("session_id=")
+                                    .substringBefore(";")
                             } else {
                                 "session_id=" + cookie.substringAfter("session_id=")
                             }
@@ -88,18 +88,10 @@ class ApiService(private val context: Context) {
         phone: String,
         companyId: Int
     ): Boolean {
-        // Autenticar primero
-        authenticate()
 
-        // Construir la URL para la solicitud
-        val url = HttpUrl.Builder()
-            .scheme("https")
-            .host(host)
-            .addPathSegment("api")
-            .addPathSegment("create_portal_user")  // Ruta adecuada para la creación del usuario
-            .build()
+        val url = registerUrl
+        println("Using Register URL: $url")
 
-        // Crear el cuerpo JSON de la solicitud
         val jsonBody = JSONObject().apply {
             put("email", email)
             put("name", name)
@@ -108,41 +100,42 @@ class ApiService(private val context: Context) {
             put("company_id", companyId)
         }
 
-        // Convertir el cuerpo JSON en un `RequestBody`
         val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
 
-        // Crear la solicitud con encabezados y cuerpo
+        println("Request Body: $jsonBody")
+
         val requestBuilder = Request.Builder()
             .url(url)
             .post(requestBody)
-            .addHeader("login", usuario)  // Encabezado de autenticación
+            .addHeader("login", usuario)
             .addHeader("password", contrasena)
-            .addHeader("api-key", apiKey)  // Usar el `apiKey`
+            .addHeader("api-key", apiKey)
             .addHeader("Content-Type", "application/json")
 
-
-
-        // Construir la solicitud completa
-        val request = requestBuilder.build()
-
-        // Ejecutar la solicitud en un contexto de IO
         return withContext(Dispatchers.IO) {
             try {
-                val response = clientAPI.newCall(request).execute()
+                val response = clientAPI.newCall(requestBuilder.build()).execute()
+                val responseBody = response.body?.string()
+
+                println("Response code: ${response.code}")
+                println("Response body: $responseBody")
+
                 if (response.isSuccessful) {
-                    val responseBody = response.body?.string()
-                    // Verificar el contenido de la respuesta para confirmar si el usuario fue creado
                     responseBody?.contains("User created successfully") == true
                 } else {
-                    println("Request failed: ${response.code}")
+                    println("Request failed with error code: ${response.code}")
+                    // Add more details about the response
+                    println("Error Response: $responseBody")
                     false
                 }
             } catch (e: IOException) {
                 println("Request failed: ${e.message}")
+                e.printStackTrace()  // Print stack trace for more detail
                 false
             }
         }
     }
+
 
 
 
