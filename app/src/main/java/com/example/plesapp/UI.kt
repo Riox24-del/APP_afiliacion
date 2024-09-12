@@ -32,6 +32,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -486,211 +487,120 @@ fun AfiliateForm() {
     var nombre by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
-    var selectedSex by remember { mutableStateOf("") }
-    var isSexDropdownExpanded by remember { mutableStateOf(false) }
-    var fechaNacimiento by remember { mutableStateOf("") }
-    var curp by remember { mutableStateOf("") }
-    var selectedEstadoCivil by remember { mutableStateOf("") }
-    var isEstadoCivilDropdownExpanded by remember { mutableStateOf(false) }
-    var direccion by remember { mutableStateOf("") }
-    var perteneceGrupoSocial by remember { mutableStateOf(false) }
-    var ocupacion by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val coroutineScope = rememberCoroutineScope()
 
-    // Función para mostrar el DatePickerDialog
-    fun showDatePicker() {
-        val calendar = Calendar.getInstance()
-        val datePicker = DatePickerDialog(
-            context,
-            { _, year, month, dayOfMonth ->
-                val selectedDate = Calendar.getInstance().apply {
-                    set(year, month, dayOfMonth)
-                }
-                fechaNacimiento = dateFormatter.format(selectedDate.time)
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        )
-        datePicker.show()
-    }
-    suspend fun submitForm() {
-        val apiService = ApiService(context)
-        val responseMessage = try {
-            val response = apiService.createPortalUser(
-                email = correo,
-                name = nombre,
-                password = "1234", // Aquí deberías obtener el password de alguna manera segura
-                phone = telefono,
-                companyId = 1, // Asume que este es el ID de la empresa
-                fechaNacimiento = fechaNacimiento,
-                curp = curp,
-                sexo = selectedSex,
-                estadoCivil = selectedEstadoCivil,
-                direccion = direccion,
-                grupoSocial = perteneceGrupoSocial,
-                ocupacion = ocupacion
-            )
-            response // Mensaje de respuesta del API
-        } catch (e: Exception) {
-            isError = true
-            "Error: ${e.message}"
+    // Validaciones básicas
+    fun isFormValid(): Boolean {
+        return when {
+            nombre.isBlank() -> {
+                message = "El nombre es obligatorio."
+                isError = true
+                false
+            }
+            correo.isBlank() -> {
+                message = "El correo es obligatorio."
+                isError = true
+                false
+            }
+            telefono.isBlank() -> {
+                message = "El teléfono es obligatorio."
+                isError = true
+                false
+            }
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches() -> {
+                message = "El correo electrónico no es válido."
+                isError = true
+                false
+            }
+            else -> true
         }
+    }
 
-        // Actualizar el mensaje con la respuesta del servidor
-        message = responseMessage
+    // Función para enviar el formulario
+    fun submitForm() {
+        coroutineScope.launch {
+            if (!isFormValid()) return@launch
+
+            isLoading = true
+            val apiService = ApiService(context)
+            val responseMessage = try {
+                val response = apiService.createPortalUser(
+                    email = correo,
+                    name = nombre,
+                    password = "1234",
+                    phone = telefono,
+                    companyId = 1
+                )
+                response
+            } catch (e: Exception) {
+                isError = true
+                "Error: ${e.message}"
+            } finally {
+                isLoading = false
+            }
+
+            // Actualizar el mensaje con la respuesta del servidor
+            message = responseMessage.toString()
+        }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()) // Asegura el scroll
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         Text("Formulario de Afiliación", style = MaterialTheme.typography.titleMedium)
 
         Spacer(modifier = Modifier.height(16.dp))
+
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it },
             label = { Text("Nombre") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = nombre.isBlank()
         )
+        if (nombre.isBlank()) {
+            Text(text = "El nombre es obligatorio.", color = Color.Red)
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
+
         OutlinedTextField(
             value = correo,
             onValueChange = { correo = it },
             label = { Text("Correo") },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            isError = correo.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()
         )
+        if (correo.isBlank()) {
+            Text(text = "El correo es obligatorio.", color = Color.Red)
+        } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
+            Text(text = "El correo electrónico no es válido.", color = Color.Red)
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
+
         OutlinedTextField(
             value = telefono,
             onValueChange = { telefono = it },
             label = { Text("Teléfono") },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            isError = telefono.isBlank()
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        ExposedDropdownMenuBox(
-            expanded = isSexDropdownExpanded,
-            onExpandedChange = { isSexDropdownExpanded = !isSexDropdownExpanded }
-        ) {
-            OutlinedTextField(
-                value = selectedSex,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Sexo") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = isSexDropdownExpanded)
-                },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-            )
-            ExposedDropdownMenu(
-                expanded = isSexDropdownExpanded,
-                onDismissRequest = { isSexDropdownExpanded = false }
-            ) {
-                val sexOptions = listOf("Hombre", "Mujer", "Prefiero no especificar")
-                sexOptions.forEach { label ->
-                    DropdownMenuItem(
-                        text = { Text(text = label) },
-                        onClick = {
-                            selectedSex = label
-                            isSexDropdownExpanded = false
-                        }
-                    )
-                }
-            }
+        if (telefono.isBlank()) {
+            Text(text = "El teléfono es obligatorio.", color = Color.Red)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = fechaNacimiento,
-            onValueChange = { /* No permitas que el usuario edite directamente */ },
-            readOnly = true,
-            label = { Text("Fecha de Nacimiento") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showDatePicker() }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = curp,
-            onValueChange = { curp = it },
-            label = { Text("CURP") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        ExposedDropdownMenuBox(
-            expanded = isEstadoCivilDropdownExpanded,
-            onExpandedChange = { isEstadoCivilDropdownExpanded = !isEstadoCivilDropdownExpanded }
-        ) {
-            OutlinedTextField(
-                value = selectedEstadoCivil,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Estado Civil") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = isEstadoCivilDropdownExpanded)
-                },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-            )
-            ExposedDropdownMenu(
-                expanded = isEstadoCivilDropdownExpanded,
-                onDismissRequest = { isEstadoCivilDropdownExpanded = false }
-            ) {
-                val estadoCivilOptions = listOf("Soltero", "Casado", "Divorciado", "Viudo", "Unión libre")
-                estadoCivilOptions.forEach { label ->
-                    DropdownMenuItem(
-                        text = { Text(text = label) },
-                        onClick = {
-                            selectedEstadoCivil = label
-                            isEstadoCivilDropdownExpanded = false
-                        }
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = direccion,
-            onValueChange = { direccion = it },
-            label = { Text("Dirección") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = perteneceGrupoSocial,
-                onCheckedChange = { perteneceGrupoSocial = it }
-            )
-            Text("Pertenece a un grupo social")
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = ocupacion,
-            onValueChange = { ocupacion = it },
-            label = { Text("Ocupación") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(10.dp))
 
         // Botones de Cancelar y Enviar
         Row(
@@ -700,7 +610,7 @@ fun AfiliateForm() {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Button(
-                onClick = { /* Acción de cancelar */ },
+                onClick = { /* Implementar acción de cancelar, por ejemplo, navegar a otra pantalla */ },
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Cancelar")
@@ -710,14 +620,23 @@ fun AfiliateForm() {
 
             Button(
                 onClick = {
-                    // Llamar a la función submitForm dentro de una corrutina
-                    CoroutineScope(Dispatchers.Main).launch {
+                    // Llamar a la función submitForm
+                    if (!isLoading) {
                         submitForm()
                     }
                 },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                enabled = !isLoading
             ) {
-                Text("Enviar")
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Enviar")
+                }
             }
         }
 
@@ -728,12 +647,14 @@ fun AfiliateForm() {
             Text(
                 text = message,
                 color = if (isError) Color.Red else Color.Green,
-                //style = MaterialTheme.typography.body1
+              //  style = MaterialTheme.typography.body1
             )
         }
         Spacer(modifier = Modifier.height(80.dp))
     }
 }
+
+
 
 
 

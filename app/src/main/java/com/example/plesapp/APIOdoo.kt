@@ -5,11 +5,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 
@@ -19,8 +21,6 @@ data class RecordPartner(
     val name: String?,
     val email: String?,
     val phone: String?,
-    @SerialName("password_app")
-    val x_studio_passwordapp: String?
 )
 
 @Serializable
@@ -86,51 +86,64 @@ class ApiService(private val context: Context) {
         name: String,
         password: String,
         phone: String,
-        companyId: Int,
-        fechaNacimiento: String,
-        curp: String,
-        sexo: String,
-        estadoCivil: String,
-        direccion: String,
-        grupoSocial: Boolean,
-        ocupacion: String,
-        //token: String?
-    ): String {
-        val jsonPayload = JSONObject().apply {
-           // put("token", token ?: apiKey)
+        companyId: Int
+    ): Boolean {
+        // Autenticar primero
+        authenticate()
+
+        // Construir la URL para la solicitud
+        val url = HttpUrl.Builder()
+            .scheme("https")
+            .host(host)
+            .addPathSegment("api")
+            .addPathSegment("create_portal_user")  // Ruta adecuada para la creación del usuario
+            .build()
+
+        // Crear el cuerpo JSON de la solicitud
+        val jsonBody = JSONObject().apply {
             put("email", email)
             put("name", name)
             put("password", password)
             put("phone", phone)
             put("company_id", companyId)
-            put("x_studio_fecha_de_nacimiento", fechaNacimiento)
-            put("x_studio_curp_1", curp)
-            put("x_studio_sexo_1", sexo)
-            put("x_studio_estado_civil_1", estadoCivil)
-            put("x_studio_direccion", direccion)
-            put("x_studio_grupo_social", grupoSocial)
-            put("x_studio_ocupacion", ocupacion)
         }
 
-        val request = Request.Builder()
-            .url(registerUrl)
-            .post(RequestBody.create("application/json".toMediaType(), jsonPayload.toString()))
-            .addHeader("Content-Type", "application/json")
-            .build()
+        // Convertir el cuerpo JSON en un `RequestBody`
+        val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
 
+        // Crear la solicitud con encabezados y cuerpo
+        val requestBuilder = Request.Builder()
+            .url(url)
+            .post(requestBody)
+            .addHeader("login", usuario)  // Encabezado de autenticación
+            .addHeader("password", contrasena)
+            .addHeader("api-key", apiKey)  // Usar el `apiKey`
+            .addHeader("Content-Type", "application/json")
+
+
+
+        // Construir la solicitud completa
+        val request = requestBuilder.build()
+
+        // Ejecutar la solicitud en un contexto de IO
         return withContext(Dispatchers.IO) {
             try {
                 val response = clientAPI.newCall(request).execute()
                 if (response.isSuccessful) {
-                    "User created successfully"
+                    val responseBody = response.body?.string()
+                    // Verificar el contenido de la respuesta para confirmar si el usuario fue creado
+                    responseBody?.contains("User created successfully") == true
                 } else {
-                    "Failed to create user: ${response.code}"
+                    println("Request failed: ${response.code}")
+                    false
                 }
             } catch (e: IOException) {
-                "Failed to create user: ${e.message}"
+                println("Request failed: ${e.message}")
+                false
             }
         }
     }
+
 
 
 }
