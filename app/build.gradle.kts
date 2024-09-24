@@ -61,6 +61,8 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.play.services.mlkit.text.recognition.common)
+    implementation(libs.play.services.mlkit.text.recognition)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -73,4 +75,11 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation(kotlin("script-runtime"))
     implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.3.1")
+
+    implementation ("androidx.camera:camera-core:1.1.0")
+    implementation ("androidx.camera:camera-camera2:1.1.0")
+    implementation ("androidx.camera:camera-lifecycle:1.1.0")
+    implementation ("androidx.camera:camera-view:1.0.0-alpha32")
+    implementation ("androidx.camera:camera-extensions:1.0.0-alpha32")
+
 }

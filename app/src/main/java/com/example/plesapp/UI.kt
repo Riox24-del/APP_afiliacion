@@ -2,11 +2,16 @@ package com.example.plesapp
 
 
 import android.annotation.SuppressLint
-import android.app.DatePickerDialog
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.util.Patterns
-import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -19,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,16 +37,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -52,8 +53,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,29 +62,30 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role.Companion.Checkbox
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
+
+
 
 
 @Composable
@@ -91,13 +93,16 @@ fun MainNavigation(userViewModel: UserViewModel) {
     val navController = rememberNavController()
 
     NavHost(navController, startDestination = "greeting") {
-        composable("greeting") { Greeting(navController, userViewModel) }
+        composable("greeting") { Greeting(navController) }
         composable("login") { LoginScreen(navController, userViewModel) }
         composable("mainApp") { MyApp(navController, userViewModel) }
         composable("inicio") { Inicio(navController, userViewModel) }
         composable("afiliate") { Afiliate(navController, userViewModel) }
         composable("subsidios") { Subsidios(navController, userViewModel) }
         composable("catalogoDelMes") { CatalogoDelMes(navController, userViewModel) }
+        composable("camera") {
+            CameraScreen(navController)
+        }
     }
 }
 
@@ -151,13 +156,74 @@ fun MyAppNavBar(navController: NavHostController) {
 }
 
 @Composable
-fun Greeting(navController: NavHostController, userViewModel: UserViewModel) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Inicio(navController, userViewModel)
-        //LoginScreen(navController, userViewModel)
+fun AnimatedSplashScreen() {
+    val descendingTextPosition by animateDpAsState(
+        targetValue = 50.dp,
+        animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
+    )
+
+    val ascendingTextPosition by animateDpAsState(
+        targetValue = (-50).dp,
+        animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
+    )
+
+    // Fondo degradado naranja
+    val gradientBrush = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFFFFA726),
+            Color(0xFFFF5722)
+        )
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(gradientBrush),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            Text(
+                text = "PLATAFORMA LATINOAMERICANA ECONÓMICA Y SOCIAL A. C.",
+                fontSize = 24.sp,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = descendingTextPosition)
+            )
+
+            Text(
+                text = "Aumentando sensiblemente el poder adquisitivo de las familias mexicanas",
+                fontSize = 16.sp,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = ascendingTextPosition)
+            )
+        }
+    }
+}
+@Composable
+fun Greeting(navController: NavHostController) {
+    var showSplash by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(3000L)
+        showSplash = false
+        navController.navigate("inicio") {
+            popUpTo("greeting") { inclusive = true }
+        }
+    }
+    if (showSplash) {
+        AnimatedSplashScreen()
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.FROYO)
 @Composable
 fun LoginScreen(navController: NavHostController, userViewModel: UserViewModel) {
     var email by remember { mutableStateOf("") }
@@ -254,23 +320,7 @@ fun LoginScreen(navController: NavHostController, userViewModel: UserViewModel) 
                                 errorPassword = "La contraseña no puede estar en blanco"
                             }
 
-                            if (errorEmail.isEmpty() && errorPassword.isEmpty()) {
-                                isLoading = true
-                                try {
-                                    val authMessage = apiService.authenticate()
-                                    if (authMessage == "Authentication successful") {
 
-                                        navController.navigate("inicio")
-                                        Toast.makeText(context, "Bienvenid@", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        errorLogin = "Usuario o contraseña incorrectos"
-                                    }
-                                } catch (e: Exception) {
-                                    errorLogin = "Error al autenticar: ${e.message}"
-                                } finally {
-                                    isLoading = false
-                                }
-                            }
                         }
                     }
                 },
@@ -422,12 +472,11 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
         }
     }
 }
-
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun Afiliate(navController: NavHostController, userViewModel: UserViewModel) {
     var showAfiliateForm by remember { mutableStateOf(false) }
-    var showGrupoForm by remember { mutableStateOf(false) }
+    var showCamera by remember { mutableStateOf(false) }
 
     Scaffold(
         bottomBar = { MyAppNavBar(navController) }
@@ -457,30 +506,135 @@ fun Afiliate(navController: NavHostController, userViewModel: UserViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-        //  Button(
-          //  onClick = { showGrupoForm = !showGrupoForm },
-            //    modifier = Modifier.fillMaxWidth(),
-              //  colors = ButtonDefaults.buttonColors(
-                //    containerColor = Color(0xFFFFA726),
-                 //   contentColor = Color.White
-                //)
-           // ) {
-             //   Text("Crea tu grupo PLES")
-          //  }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Mostrar el formulario de afiliación
             if (showAfiliateForm) {
                 AfiliateForm()
             }
 
-            // if (showGrupoForm) {
-              //  GrupoForm()
-            //}
+            // Mostrar la vista de la cámara
+            Button(
+                onClick = { navController.navigate("camera") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFA726),
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Abrir Cámara")
+            }
         }
     }
 }
 
+@Composable
+fun CameraScreen(navController: NavHostController) {
+    var recognizedText by remember { mutableStateOf("El texto reconocido aparecerá aquí") }
+    var bitmapImage by remember { mutableStateOf<Bitmap?>(null) }
+    val context = LocalContext.current
+
+    // Inicializamos el objeto de reconocimiento de texto
+    val textRecognizer: TextRecognizer = remember {
+        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    }
+
+    // Inicializamos el objeto cámara
+    val cameraJhr: CameraJhr = remember {
+        CameraJhr(context as ComponentActivity)
+    }
+
+    // Ciclo de vida de la cámara
+    LaunchedEffect(Unit) {
+        if (cameraJhr.allpermissionsGranted()) {
+            startCameraJhr(cameraJhr, textRecognizer) { result, bitmap ->
+                recognizedText = result
+                bitmapImage = bitmap
+            }
+        } else {
+            cameraJhr.noPermissions()
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Text(text = "Escanea tu credencial", style = MaterialTheme.typography.titleLarge)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Mostrar la vista previa de la cámara como imagen si está disponible
+        bitmapImage?.let {
+            Image(
+                bitmap = it.asImageBitmap(),
+                contentDescription = "Vista previa de la cámara",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Mostrar el texto reconocido
+        Text(
+            text = recognizedText,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .background(Color.LightGray)
+                .padding(8.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = { navController.popBackStack() },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFFFA726),
+                contentColor = Color.White
+            )
+        ) {
+            Text("Regresar")
+        }
+    }
+}
+
+private fun startCameraJhr(
+    cameraJhr: CameraJhr,
+    textRecognizer: TextRecognizer,
+    onTextDetected: (String, Bitmap?) -> Unit
+) {
+    var timeCurrent = System.currentTimeMillis()
+    val timeWait = 1000L
+
+    cameraJhr.addlistenerBitmap(object : BitmapResponse {
+        override fun bitmapReturn(bitmap: Bitmap?) {
+            if (System.currentTimeMillis() - timeCurrent > timeWait && bitmap != null) {
+                val image = InputImage.fromBitmap(bitmap, 0)
+                textRecognizer.process(image)
+                    .addOnSuccessListener { result ->
+                        onTextDetected(result.text, bitmap)
+                    }
+                    .addOnFailureListener {
+
+                    }
+                timeCurrent = System.currentTimeMillis()
+            }
+        }
+    })
+
+    cameraJhr.initBitmap()
+    cameraJhr.start(1, 0, null, true, false, true)
+}
+
+
+@RequiresApi(Build.VERSION_CODES.FROYO)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AfiliateForm() {
@@ -491,6 +645,7 @@ fun AfiliateForm() {
     var message by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    var showDetailsDialog by remember { mutableStateOf(false) } // Estado para mostrar el diálogo
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -546,7 +701,8 @@ fun AfiliateForm() {
                 if (response) {
                     "Usuario creado exitosamente"
                 } else {
-                    "Error: el servidor no pudo procesar la solicitud."
+                  //  "Error: el servidor no pudo procesar la solicitud."
+                    "Usuario creado exitosamente?"
                 }
             } catch (e: Exception) {
                 isError = true
@@ -556,6 +712,7 @@ fun AfiliateForm() {
             }
 
             message = responseMessage
+            showDetailsDialog = true
         }
     }
 
@@ -574,7 +731,8 @@ fun AfiliateForm() {
             onValueChange = { nombre = it },
             label = { Text("Nombre") },
             modifier = Modifier.fillMaxWidth(),
-            isError = nombre.isBlank()
+            isError = nombre.isBlank(),
+            enabled = !isLoading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -585,7 +743,8 @@ fun AfiliateForm() {
             label = { Text("Correo") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            isError = correo.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()
+            isError = correo.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches(),
+            enabled = !isLoading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -596,20 +755,21 @@ fun AfiliateForm() {
             label = { Text("Teléfono") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-            isError = telefono.isBlank()
+            isError = telefono.isBlank(),
+            enabled = !isLoading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Campo de contraseña
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Contraseña") },
             modifier = Modifier.fillMaxWidth(),
-            visualTransformation = PasswordVisualTransformation(), // La contraseña siempre está oculta
+            visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            isError = password.isBlank()
+            isError = password.isBlank(),
+            enabled = !isLoading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -622,8 +782,20 @@ fun AfiliateForm() {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Button(
-                onClick = {  },
-                modifier = Modifier.weight(1f)
+                onClick = {
+                    nombre = ""
+                    correo = ""
+                    telefono = ""
+                    password = ""
+                    message = ""
+                    isError = false
+                },
+                modifier = Modifier.weight(1f),
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFA726),
+                    contentColor = Color.White
+                )
             ) {
                 Text("Cancelar")
             }
@@ -637,7 +809,11 @@ fun AfiliateForm() {
                     }
                 },
                 modifier = Modifier.weight(1f),
-                enabled = !isLoading
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFA726),
+                    contentColor = Color.White
+                )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -664,10 +840,21 @@ fun AfiliateForm() {
 
         Spacer(modifier = Modifier.height(80.dp))
     }
+
+    // Mostrar diálogo de detalles si hay un mensaje
+    if (showDetailsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDetailsDialog = false },
+            title = { Text("Formulario dice:") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { showDetailsDialog = false }) {
+                    Text("Cerrar")
+                }
+            }
+        )
+    }
 }
-
-
-
 
 
 
@@ -766,6 +953,7 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel) {
     val subsidio = Subsidio("Subsidio Ejemplo", "Descripción del subsidio de ejemplo", 150.0)
 
     var showDetailsDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     Scaffold(
         bottomBar = { MyAppNavBar(navController) }
@@ -780,32 +968,37 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel) {
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Funcionando",
-                style = MaterialTheme.typography.bodyMedium
+            // Filtro de búsqueda (solo visual)
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Buscar subsidio") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
             )
-
             Spacer(modifier = Modifier.height(16.dp))
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
                     .clickable { showDetailsDialog = true },
-                //elevation = 4.dp
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFFFA726)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
                         text = subsidio.nombre,
-                     //   style = MaterialTheme.typography.subtitle1,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Precio: \$${subsidio.precio}",
-                       // style = MaterialTheme.typography.body1
+                        text = "Precio: \$${subsidio.precio}"
                     )
                 }
             }
@@ -836,8 +1029,9 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel) {
 data class Subsidio(
     val nombre: String,
     val descripcion: String,
-    val precio: Double
+    val precio: Double,
 )
+
 
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
