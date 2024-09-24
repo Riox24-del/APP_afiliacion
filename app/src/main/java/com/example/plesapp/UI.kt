@@ -4,11 +4,19 @@ package com.example.plesapp
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.util.Patterns
-import androidx.activity.ComponentActivity
+import android.view.ViewGroup
 import androidx.annotation.RequiresApi
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -65,9 +73,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -75,17 +83,21 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.launch
-
-
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import android.Manifest
+import java.util.concurrent.Executors
 
 
 @Composable
@@ -528,112 +540,149 @@ fun Afiliate(navController: NavHostController, userViewModel: UserViewModel) {
         }
     }
 }
-
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun CameraScreen(navController: NavHostController) {
     var recognizedText by remember { mutableStateOf("El texto reconocido aparecerá aquí") }
     var bitmapImage by remember { mutableStateOf<Bitmap?>(null) }
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    // Inicializamos el objeto de reconocimiento de texto
-    val textRecognizer: TextRecognizer = remember {
-        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    }
+    // Permisos de la cámara
+    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
-    // Inicializamos el objeto cámara
-    val cameraJhr: CameraJhr = remember {
-        CameraJhr(context as ComponentActivity)
-    }
-
-    // Ciclo de vida de la cámara
+    // Solicitar permiso si no está concedido
     LaunchedEffect(Unit) {
-        if (cameraJhr.allpermissionsGranted()) {
-            startCameraJhr(cameraJhr, textRecognizer) { result, bitmap ->
-                recognizedText = result
-                bitmapImage = bitmap
-            }
-        } else {
-            cameraJhr.noPermissions()
+        if (!cameraPermissionState.status.isGranted) {
+            cameraPermissionState.launchPermissionRequest()
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Text(text = "Escanea tu credencial", style = MaterialTheme.typography.titleLarge)
+    // Si el permiso ha sido concedido, iniciar la cámara
+    if (cameraPermissionState.status.isGranted) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(text = "Escanea tu credencial", style = MaterialTheme.typography.titleLarge)
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Mostrar la vista previa de la cámara como imagen si está disponible
-        bitmapImage?.let {
-            Image(
-                bitmap = it.asImageBitmap(),
-                contentDescription = "Vista previa de la cámara",
+            // Vista previa de la cámara usando CameraX
+            AndroidView(
+                factory = { context ->
+                    val previewView = PreviewView(context).apply {
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                    }
+
+                    val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+                    cameraProviderFuture.addListener({
+                        // Cuando el cameraProvider está listo
+                        val cameraProvider = cameraProviderFuture.get()
+                        val preview = Preview.Builder().build().also {
+                            it.setSurfaceProvider(previewView.surfaceProvider)
+                        }
+
+                        val imageCapture = ImageCapture.Builder().build()
+
+                        val imageAnalyzer = ImageAnalysis.Builder()
+                            .build()
+                            .also {
+                                it.setAnalyzer(cameraExecutor, { imageProxy ->
+                                    val bitmap = imageProxy.toBitmap()
+                                    val inputImage = InputImage.fromBitmap(bitmap, 0)
+                                    // Aquí procesamos el texto reconocido
+                                    val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                                    textRecognizer.process(inputImage)
+                                        .addOnSuccessListener { visionText ->
+                                            recognizedText = visionText.text
+                                            bitmapImage = bitmap
+                                        }
+                                        .addOnFailureListener {
+                                            // Manejar error
+                                        }
+                                    imageProxy.close()
+                                })
+                            }
+
+                        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                        try {
+                            cameraProvider.unbindAll()
+                            cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                cameraSelector,
+                                preview,
+                                imageCapture,
+                                imageAnalyzer
+                            )
+                        } catch (exc: Exception) {
+                            // Manejo de errores
+                        }
+                    }, ContextCompat.getMainExecutor(context))
+
+                    previewView
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(300.dp)
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Mostrar el texto reconocido
+            Text(
+                text = recognizedText,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .background(Color.LightGray)
+                    .padding(8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFA726),
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Regresar")
+            }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Mostrar el texto reconocido
-        Text(
-            text = recognizedText,
-            style = MaterialTheme.typography.bodyMedium,
+    } else {
+        // Si no tiene permisos, mostrar una UI que los pida
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
-                .background(Color.LightGray)
-                .padding(8.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = { navController.popBackStack() },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFFFA726),
-                contentColor = Color.White
-            )
+                .padding(16.dp)
         ) {
-            Text("Regresar")
+            Text("Permiso de cámara no concedido")
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = { cameraPermissionState.launchPermissionRequest() }) {
+                Text("Conceder permiso")
+            }
         }
     }
 }
 
-private fun startCameraJhr(
-    cameraJhr: CameraJhr,
-    textRecognizer: TextRecognizer,
-    onTextDetected: (String, Bitmap?) -> Unit
-) {
-    var timeCurrent = System.currentTimeMillis()
-    val timeWait = 1000L
-
-    cameraJhr.addlistenerBitmap(object : BitmapResponse {
-        override fun bitmapReturn(bitmap: Bitmap?) {
-            if (System.currentTimeMillis() - timeCurrent > timeWait && bitmap != null) {
-                val image = InputImage.fromBitmap(bitmap, 0)
-                textRecognizer.process(image)
-                    .addOnSuccessListener { result ->
-                        onTextDetected(result.text, bitmap)
-                    }
-                    .addOnFailureListener {
-
-                    }
-                timeCurrent = System.currentTimeMillis()
-            }
-        }
-    })
-
-    cameraJhr.initBitmap()
-    cameraJhr.start(1, 0, null, true, false, true)
+// Función de ayuda para convertir ImageProxy a Bitmap
+private fun ImageProxy.toBitmap(): Bitmap {
+    val buffer = planes[0].buffer
+    buffer.rewind()
+    val bytes = ByteArray(buffer.capacity())
+    buffer.get(bytes)
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, null)
 }
-
-
 @RequiresApi(Build.VERSION_CODES.FROYO)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -14,6 +14,7 @@ cameraMlkitVision = "1.5.0-alpha01"
 playServicesMlkitTextRecognition = "19.0.1"
 objectDetectionCommon = "18.0.0"
 playServicesMlkitTextRecognitionCommon = "19.1.0"
+androidbrowserhelper = "2.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -36,6 +37,7 @@ androidx-camera-mlkit-vision = { group = "androidx.camera", name = "camera-mlkit
 play-services-mlkit-text-recognition = { group = "com.google.android.gms", name = "play-services-mlkit-text-recognition", version.ref = "playServicesMlkitTextRecognition" }
 object-detection-common = { group = "com.google.mlkit", name = "object-detection-common", version.ref = "objectDetectionCommon" }
 play-services-mlkit-text-recognition-common = { group = "com.google.android.gms", name = "play-services-mlkit-text-recognition-common", version.ref = "playServicesMlkitTextRecognitionCommon" }
+androidbrowserhelper = { group = "com.google.androidbrowserhelper", name = "androidbrowserhelper", version.ref = "androidbrowserhelper" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
