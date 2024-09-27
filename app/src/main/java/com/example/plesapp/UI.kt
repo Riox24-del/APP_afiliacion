@@ -97,6 +97,10 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import android.Manifest
+import android.widget.Toast
+import androidx.camera.core.ImageCaptureException
+import androidx.compose.ui.graphics.asImageBitmap
+import java.io.File
 import java.util.concurrent.Executors
 
 
@@ -540,11 +544,16 @@ fun Afiliate(navController: NavHostController, userViewModel: UserViewModel) {
         }
     }
 }
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun CameraScreen(navController: NavHostController) {
     var recognizedText by remember { mutableStateOf("El texto reconocido aparecerá aquí") }
-    var bitmapImage by remember { mutableStateOf<Bitmap?>(null) }
+    var nombre by remember { mutableStateOf("") }
+    var direccion by remember { mutableStateOf("") }
+    var curp by remember { mutableStateOf("") }
+    var fechaNacimiento by remember { mutableStateOf("") }
+
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
@@ -561,9 +570,12 @@ fun CameraScreen(navController: NavHostController) {
 
     // Si el permiso ha sido concedido, iniciar la cámara
     if (cameraPermissionState.status.isGranted) {
+        var imageCapture: ImageCapture? = remember { null }
+
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
             Text(text = "Escanea tu credencial", style = MaterialTheme.typography.titleLarge)
@@ -582,32 +594,32 @@ fun CameraScreen(navController: NavHostController) {
 
                     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
                     cameraProviderFuture.addListener({
-                        // Cuando el cameraProvider está listo
                         val cameraProvider = cameraProviderFuture.get()
                         val preview = Preview.Builder().build().also {
                             it.setSurfaceProvider(previewView.surfaceProvider)
                         }
 
-                        val imageCapture = ImageCapture.Builder().build()
-
                         val imageAnalyzer = ImageAnalysis.Builder()
                             .build()
                             .also {
-                                it.setAnalyzer(cameraExecutor, { imageProxy ->
+                                it.setAnalyzer(cameraExecutor) { imageProxy ->
                                     val bitmap = imageProxy.toBitmap()
                                     val inputImage = InputImage.fromBitmap(bitmap, 0)
-                                    // Aquí procesamos el texto reconocido
                                     val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
                                     textRecognizer.process(inputImage)
                                         .addOnSuccessListener { visionText ->
                                             recognizedText = visionText.text
-                                            bitmapImage = bitmap
+                                            // Extraer campos de la INE usando expresiones regulares
+                                            nombre = extractNombre(visionText.text)
+                                            direccion = extractDireccion(visionText.text)
+                                            curp = extractCURP(visionText.text)
+                                            fechaNacimiento = extractFechaNacimiento(visionText.text)
                                         }
                                         .addOnFailureListener {
-                                            // Manejar error
+                                            // Manejo de errores
                                         }
                                     imageProxy.close()
-                                })
+                                }
                             }
 
                         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -618,7 +630,6 @@ fun CameraScreen(navController: NavHostController) {
                                 lifecycleOwner,
                                 cameraSelector,
                                 preview,
-                                imageCapture,
                                 imageAnalyzer
                             )
                         } catch (exc: Exception) {
@@ -635,16 +646,27 @@ fun CameraScreen(navController: NavHostController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Mostrar el texto reconocido
-            Text(
-                text = recognizedText,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-                    .background(Color.LightGray)
-                    .padding(8.dp)
-            )
+            // Mostrar los datos reconocidos
+            Text(text = "Nombre: $nombre", style = MaterialTheme.typography.bodyMedium)
+            Text(text = "Dirección: $direccion", style = MaterialTheme.typography.bodyMedium)
+            Text(text = "CURP: $curp", style = MaterialTheme.typography.bodyMedium)
+            Text(text = "Fecha de Nacimiento: $fechaNacimiento", style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Botón para guardar los datos reconocidos
+            Button(
+                onClick = {
+                    Toast.makeText(context, "Datos guardados:\nNombre: $nombre\nCURP: $curp", Toast.LENGTH_LONG).show()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFA726),
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Mis datos son correctos")
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -675,14 +697,34 @@ fun CameraScreen(navController: NavHostController) {
     }
 }
 
-// Función de ayuda para convertir ImageProxy a Bitmap
-private fun ImageProxy.toBitmap(): Bitmap {
-    val buffer = planes[0].buffer
-    buffer.rewind()
-    val bytes = ByteArray(buffer.capacity())
-    buffer.get(bytes)
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, null)
+// Función para extraer el nombre usando expresiones regulares
+fun extractNombre(text: String): String {
+    val pattern = Regex("(?i)(Nombre|NOMBRE|nombre):?\\s*([A-Z\\s]+)")
+    return pattern.find(text)?.groupValues?.get(2) ?: "No encontrado"
 }
+
+// Función para extraer la dirección
+fun extractDireccion(text: String): String {
+    val pattern = Regex("(?i)(Domicilio|DOMICILIO|domicilio):?\\s*([A-Za-z0-9\\s,]+)")
+    return pattern.find(text)?.groupValues?.get(2) ?: "No encontrado"
+}
+
+// Función para extraer el CURP
+fun extractCURP(text: String): String {
+    val pattern = Regex("[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[0-9]{2}")
+    return pattern.find(text)?.value ?: "No encontrado"
+}
+
+// Función para extraer la fecha de nacimiento
+fun extractFechaNacimiento(text: String): String {
+    val pattern = Regex("(\\d{2}/\\d{2}/\\d{4})")
+    return pattern.find(text)?.value ?: "No encontrado"
+}
+
+
+
+
+
 @RequiresApi(Build.VERSION_CODES.FROYO)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
