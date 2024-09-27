@@ -97,11 +97,20 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageCaptureException
 import androidx.compose.ui.graphics.asImageBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.Executors
+import kotlin.coroutines.resumeWithException
 
 
 @Composable
@@ -545,119 +554,119 @@ fun Afiliate(navController: NavHostController, userViewModel: UserViewModel) {
     }
 }
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun CameraScreen(navController: NavHostController) {
-    var recognizedText by remember { mutableStateOf("El texto reconocido aparecerá aquí") }
-    var nombre by remember { mutableStateOf("") }
-    var direccion by remember { mutableStateOf("") }
-    var curp by remember { mutableStateOf("") }
-    var fechaNacimiento by remember { mutableStateOf("") }
-
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var analysisResult by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var imageLoadedMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    // Permisos de la cámara
-    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
-
-    // Solicitar permiso si no está concedido
-    LaunchedEffect(Unit) {
-        if (!cameraPermissionState.status.isGranted) {
-            cameraPermissionState.launchPermissionRequest()
+    // Lanzador para seleccionar una imagen desde el almacenamiento
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            imageUri = uri
+            errorMessage = null
+            imageLoadedMessage = "Imagen cargada"
+        } else {
+            errorMessage = "No se seleccionó ninguna imagen"
+            imageLoadedMessage = null
         }
     }
 
-    // Si el permiso ha sido concedido, iniciar la cámara
-    if (cameraPermissionState.status.isGranted) {
-        var imageCapture: ImageCapture? = remember { null }
+    // Lanzador de permisos, para versiones anteriores a Android 13
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            imagePickerLauncher.launch("image/*")
+        } else {
+            errorMessage = "Permiso denegado para acceder a almacenamiento"
+        }
+    }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-        ) {
-            Text(text = "Escanea tu credencial", style = MaterialTheme.typography.titleLarge)
+    // Verificar permisos y lanzar el selector de archivos
+    fun launchImagePicker() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13 y superior: Usar READ_MEDIA_IMAGES
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.READ_MEDIA_IMAGES
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                imagePickerLauncher.launch("image/*")
+            } else {
+                permissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+            }
+        } else {
+            // Android 12 y versiones anteriores: Usar READ_EXTERNAL_STORAGE
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                imagePickerLauncher.launch("image/*")
+            } else {
+                permissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        }
+    }
 
-            Spacer(modifier = Modifier.height(16.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Botón para abrir el selector de archivos y elegir una imagen
+        Button(onClick = { launchImagePicker() }) {
+            Text("Seleccionar Imagen de INE")
+        }
 
-            // Vista previa de la cámara usando CameraX
-            AndroidView(
-                factory = { context ->
-                    val previewView = PreviewView(context).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
+        // Mostrar mensaje si la imagen ha sido cargada
+        imageLoadedMessage?.let {
+            Text(it, color = Color.Green)
+        }
+
+        imageUri?.let { uri ->
+            // Botón para analizar la imagen seleccionada
+            Button(onClick = {
+                coroutineScope.launch {
+                    try {
+                        analysisResult = analyzeImage(context, uri)
+                        errorMessage = null
+                    } catch (e: Exception) {
+                        errorMessage = "Error al analizar la imagen: ${e.message}"
                     }
+                }
+            }) {
+                Text("Analizar Imagen")
+            }
+        }
 
-                    val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-                    cameraProviderFuture.addListener({
-                        val cameraProvider = cameraProviderFuture.get()
-                        val preview = Preview.Builder().build().also {
-                            it.setSurfaceProvider(previewView.surfaceProvider)
-                        }
+        // Mostrar resultados del análisis
+        if (analysisResult.isNotEmpty()) {
+            analysisResult.forEach { (tag, value) ->
+                Text("$tag: $value")
+            }
+        }
 
-                        val imageAnalyzer = ImageAnalysis.Builder()
-                            .build()
-                            .also {
-                                it.setAnalyzer(cameraExecutor) { imageProxy ->
-                                    val bitmap = imageProxy.toBitmap()
-                                    val inputImage = InputImage.fromBitmap(bitmap, 0)
-                                    val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-                                    textRecognizer.process(inputImage)
-                                        .addOnSuccessListener { visionText ->
-                                            recognizedText = visionText.text
-                                            // Extraer campos de la INE usando expresiones regulares
-                                            nombre = extractNombre(visionText.text)
-                                            direccion = extractDireccion(visionText.text)
-                                            curp = extractCURP(visionText.text)
-                                            fechaNacimiento = extractFechaNacimiento(visionText.text)
-                                        }
-                                        .addOnFailureListener {
-                                            // Manejo de errores
-                                        }
-                                    imageProxy.close()
-                                }
-                            }
+        // Mostrar mensajes de error si ocurren
+        errorMessage?.let { error ->
+            Text(error, color = MaterialTheme.colorScheme.error)
+        }
 
-                        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+        Spacer(modifier = Modifier.height(16.dp))
 
-                        try {
-                            cameraProvider.unbindAll()
-                            cameraProvider.bindToLifecycle(
-                                lifecycleOwner,
-                                cameraSelector,
-                                preview,
-                                imageAnalyzer
-                            )
-                        } catch (exc: Exception) {
-                            // Manejo de errores
-                        }
-                    }, ContextCompat.getMainExecutor(context))
-
-                    previewView
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Mostrar los datos reconocidos
-            Text(text = "Nombre: $nombre", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Dirección: $direccion", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "CURP: $curp", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Fecha de Nacimiento: $fechaNacimiento", style = MaterialTheme.typography.bodyMedium)
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Botón para guardar los datos reconocidos
+        // Botón para guardar el texto reconocido
+        if (analysisResult.isNotEmpty()) {
             Button(
                 onClick = {
-                    Toast.makeText(context, "Datos guardados:\nNombre: $nombre\nCURP: $curp", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Datos guardados: $analysisResult", Toast.LENGTH_LONG).show()
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
@@ -666,59 +675,120 @@ fun CameraScreen(navController: NavHostController) {
                 )
             ) {
                 Text("Mis datos son correctos")
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = { navController.popBackStack() },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFA726),
-                    contentColor = Color.White
-                )
-            ) {
-                Text("Regresar")
             }
+            Text("Si sus datos son incorrectos, cargue una nueva imagen")
         }
-    } else {
-        // Si no tiene permisos, mostrar una UI que los pida
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = { navController.popBackStack() },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFFFA726),
+                contentColor = Color.White
+            )
         ) {
-            Text("Permiso de cámara no concedido")
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = { cameraPermissionState.launchPermissionRequest() }) {
-                Text("Conceder permiso")
-            }
+            Text("Regresar")
         }
     }
 }
 
-// Función para extraer el nombre usando expresiones regulares
-fun extractNombre(text: String): String {
-    val pattern = Regex("(?i)(Nombre|NOMBRE|nombre):?\\s*([A-Z\\s]+)")
-    return pattern.find(text)?.groupValues?.get(2) ?: "No encontrado"
-}
 
-// Función para extraer la dirección
-fun extractDireccion(text: String): String {
-    val pattern = Regex("(?i)(Domicilio|DOMICILIO|domicilio):?\\s*([A-Za-z0-9\\s,]+)")
-    return pattern.find(text)?.groupValues?.get(2) ?: "No encontrado"
-}
+@OptIn(ExperimentalCoroutinesApi::class)
+suspend fun analyzeImage(context: Context, uri: Uri): Map<String, String> = withContext(Dispatchers.Default) {
+    val image = InputImage.fromFilePath(context, uri)
+    val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
-// Función para extraer el CURP
-fun extractCURP(text: String): String {
-    val pattern = Regex("[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[0-9]{2}")
-    return pattern.find(text)?.value ?: "No encontrado"
-}
+    return@withContext suspendCancellableCoroutine { continuation ->
+        recognizer.process(image)
+            .addOnSuccessListener { visionText ->
+                val extractedInfo = mutableMapOf<String, String>()
+                var currentTag: String? = null
+                var currentValue = StringBuilder()
 
-// Función para extraer la fecha de nacimiento
-fun extractFechaNacimiento(text: String): String {
-    val pattern = Regex("(\\d{2}/\\d{2}/\\d{4})")
-    return pattern.find(text)?.value ?: "No encontrado"
+                for (block in visionText.textBlocks) {
+                    for (line in block.lines) {
+                        val lineText = line.text.trim()
+
+                        when {
+                            // Detectar "Nombre" sin repetirlo en el valor extraído
+                            lineText.lowercase().startsWith("nombre") && "Nombre" !in extractedInfo -> {
+                                if (currentTag != null) {
+                                    extractedInfo[currentTag] = currentValue.toString().trim()
+                                }
+                                currentTag = "Nombre"
+                                currentValue = StringBuilder(lineText.substringAfter("nombre", "").trim())
+                            }
+
+                            // Detectar "Domicilio" sin repetirlo en el valor extraído
+                            lineText.lowercase().startsWith("domicilio") && "Domicilio" !in extractedInfo -> {
+                                if (currentTag != null) {
+                                    extractedInfo[currentTag] = currentValue.toString().trim()
+                                }
+                                currentTag = "Domicilio"
+                                currentValue = StringBuilder(lineText.substringAfter("domicilio", "").trim())
+                            }
+
+                            // Detectar "CURP" sin repetirlo en el valor extraído
+                            lineText.lowercase().startsWith("curp") && "CURP" !in extractedInfo -> {
+                                if (currentTag != null) {
+                                    extractedInfo[currentTag] = currentValue.toString().trim()
+                                }
+                                currentTag = "CURP"
+                                currentValue = StringBuilder(lineText.substringAfter("curp", "").trim())
+                            }
+
+                            // Detectar "Fecha de Nacimiento" sin repetirlo en el valor extraído
+                            lineText.lowercase().startsWith("fecha de nacimiento") && "Fecha de Nacimiento" !in extractedInfo -> {
+                                if (currentTag != null) {
+                                    extractedInfo[currentTag] = currentValue.toString().trim()
+                                }
+                                currentTag = "Fecha de Nacimiento"
+                                currentValue = StringBuilder(lineText.substringAfter("fecha de nacimiento", "").trim())
+                            }
+
+                            // Separar información adicional
+                            lineText.lowercase().contains("sexo") -> {
+                                extractedInfo["Sexo"] = lineText.substringAfter(":").trim()
+                            }
+                            lineText.lowercase().contains("año de registro") -> {
+                                extractedInfo["Año de Registro"] = lineText.substringAfter(":").trim()
+                            }
+                            lineText.lowercase().contains("municipio") -> {
+                                extractedInfo["Municipio"] = lineText.substringAfter(":").trim()
+                            }
+                            lineText.lowercase().contains("localidad") -> {
+                                extractedInfo["Localidad"] = lineText.substringAfter(":").trim()
+                            }
+                            lineText.lowercase().contains("emision") -> {
+                                extractedInfo["Emisión"] = lineText.substringAfter(":").trim()
+                            }
+                            lineText.lowercase().contains("vigencia") -> {
+                                extractedInfo["Vigencia"] = lineText.substringAfter(":").trim()
+                            }
+
+                            else -> {
+                                if (currentTag != null) {
+                                    currentValue.append(" ").append(lineText)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Añadir el último campo procesado
+                if (currentTag != null) {
+                    extractedInfo[currentTag] = currentValue.toString().trim()
+                }
+
+                continuation.resume(extractedInfo) {}
+            }
+            .addOnFailureListener { e ->
+                continuation.resumeWithException(e)
+            }
+    }
 }
 
 
