@@ -8,18 +8,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.util.Patterns
-import android.view.ViewGroup
 import androidx.annotation.RequiresApi
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,15 +16,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -46,9 +32,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -70,12 +53,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -83,38 +63,37 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.launch
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.ImageCaptureException
 import androidx.compose.ui.graphics.asImageBitmap
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
+import androidx.compose.ui.text.font.FontStyle
+import android.util.Base64
+import androidx.activity.result.launch
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.draw.clip
+import androidx.core.content.FileProvider
+import coil.compose.rememberImagePainter
 import java.io.File
-import java.util.concurrent.Executors
-import kotlin.coroutines.resumeWithException
+import java.io.FileOutputStream
+import java.io.IOException
 
 
 @Composable
-fun MainNavigation(userViewModel: UserViewModel) {
+fun MainNavigation(userViewModel: UserViewModel, apiService: ApiService) {
     val navController = rememberNavController()
 
     NavHost(navController, startDestination = "greeting") {
@@ -123,11 +102,8 @@ fun MainNavigation(userViewModel: UserViewModel) {
         composable("mainApp") { MyApp(navController, userViewModel) }
         composable("inicio") { Inicio(navController, userViewModel) }
         composable("afiliate") { Afiliate(navController, userViewModel) }
-        composable("subsidios") { Subsidios(navController, userViewModel) }
-        composable("catalogoDelMes") { CatalogoDelMes(navController, userViewModel) }
-        composable("camera") {
-            CameraScreen(navController)
-        }
+        composable("subsidios") { Subsidios(navController, userViewModel, apiService) }
+        composable("camera") { CameraScreen(navController) }
     }
 }
 
@@ -171,67 +147,10 @@ fun MyAppNavBar(navController: NavHostController) {
             selected = navController.currentDestination?.route == "subsidios",
             onClick = { navController.navigate("subsidios") }
         )
-      //  NavigationBarItem(
-       //     icon = { Icon(Icons.Filled.Home, "Catálogo del Mes") },
-        //    label = { Text("Catálogo del Mes") },
-        //    selected = navController.currentDestination?.route == "catalogoDelMes",
-         //   onClick = { navController.navigate("catalogoDelMes") }
-        //)
     }
 }
 
-@Composable
-fun AnimatedSplashScreen() {
-    val descendingTextPosition by animateDpAsState(
-        targetValue = 50.dp,
-        animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-    )
 
-    val ascendingTextPosition by animateDpAsState(
-        targetValue = (-50).dp,
-        animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-    )
-
-    // Fondo degradado naranja
-    val gradientBrush = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFFFFA726),
-            Color(0xFFFF5722)
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(gradientBrush),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            Text(
-                text = "PLATAFORMA LATINOAMERICANA ECONÓMICA Y SOCIAL A. C.",
-                fontSize = 24.sp,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = descendingTextPosition)
-            )
-
-            Text(
-                text = "Aumentando sensiblemente el poder adquisitivo de las familias mexicanas",
-                fontSize = 16.sp,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset(y = ascendingTextPosition)
-            )
-        }
-    }
-}
 @Composable
 fun Greeting(navController: NavHostController) {
     var showSplash by remember { mutableStateOf(true) }
@@ -380,6 +299,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Imagen principal con el logo
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -387,55 +307,27 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.inicio),
-                    contentDescription = "Logo de Plataforma Latinoamericana",
+                    contentDescription = "Logo",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Text(
-                    text = "Plataforma Latinoamericana Económica y Social",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFFFFFF),
-                        shadow = Shadow(color = Color.Black, blurRadius = 4f)
-                    ),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(8.dp),
-                    textAlign = TextAlign.Center
-                )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+
+            Spacer(modifier = Modifier.height(1.dp))
             Text(
-                text = "Lunes a Viernes de 09:00 a 19:00, Sábado de 09:00 a 14:00",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color.Gray
+                text = "¡Síguenos en nuestras redes sociales!",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    color = Color(0xFFFFA726),
+                    fontWeight = FontWeight.Bold
                 ),
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(24.dp))
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Botones debajo de la imagen
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(
-                    text = "Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax.",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.DarkGray
-                    ),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Divider(color = Color.Gray, thickness = 1.dp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Teléfono: 529511433017",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.DarkGray
-                    ),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Divider(color = Color.Gray, thickness = 1.dp)
-                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = {
                         val intent =
@@ -443,27 +335,23 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                         context.startActivity(intent)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(
-                        1.dp,
-                        Color(0xFF2675AE)
-                    ),
+                    border = BorderStroke(1.dp, Color(0xFF2675AE)),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Color(0xFF2675AE)
                     )
                 ) {
                     Text("Facebook")
                 }
+
                 Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedButton(
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://plesmx.com/"))
                         context.startActivity(intent)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(
-                        1.dp,
-                        Color(0xFFFFA726)
-                    ),
+                    border = BorderStroke(1.dp, Color(0xFFFFA726)),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Color(0xFFFFA726)
                     )
@@ -476,31 +364,74 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                         textAlign = TextAlign.Center
                     )
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "¿Ya estás afiliado?, Inicia Sesión",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = Color(0xFF000000),
+                       // fontWeight = FontWeight.Bold
+                    ),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 OutlinedButton(
                     onClick = {
                         navController.navigate("login")
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(
-                        1.dp,
-                        Color(0xFFFFA726)
-                    ),
+                    border = BorderStroke(1.dp, Color(0xFFFFA726)),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Color(0xFFFFA726)
                     )
                 ) {
                     Text("Iniciar sesión")
                 }
+            }
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Información de contacto en la parte inferior
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Lunes a Viernes de 09:00 a 19:00, Sábado de 09:00 a 14:00",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color.Gray
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax.",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color.DarkGray
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Teléfono: 529511433017",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color.DarkGray
+                    ),
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }
 }
+
+
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun Afiliate(navController: NavHostController, userViewModel: UserViewModel) {
-    var showAfiliateForm by remember { mutableStateOf(false) }
     var showCamera by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -518,41 +449,14 @@ fun Afiliate(navController: NavHostController, userViewModel: UserViewModel) {
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = { showAfiliateForm = !showAfiliateForm },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFA726),
-                    contentColor = Color.White
-                )
-            ) {
-                Text("Afíliate")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Mostrar el formulario de afiliación
-            if (showAfiliateForm) {
+            AfiliateForm(navController)
+           /* if (showForm) {
                 AfiliateForm()
-            }
-
-            // Mostrar la vista de la cámara
-            Button(
-                onClick = { navController.navigate("camera") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFA726),
-                    contentColor = Color.White
-                )
-            ) {
-                Text("Abrir Cámara")
-            }
+            } */
         }
     }
 }
+
 
 @Composable
 fun CameraScreen(navController: NavHostController) {
@@ -560,8 +464,66 @@ fun CameraScreen(navController: NavHostController) {
     var analysisResult by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var imageLoadedMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // Función para guardar los resultados en SharedPreferences
+    fun saveDataToSharedPreferences(analysisResult: Map<String, String>) {
+        val sharedPreferences = context.getSharedPreferences("CameraData", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        analysisResult.forEach { (key, value) -> editor.putString(key, value) }
+        editor.apply()
+    }
+
+    // Función auxiliar para guardar el Bitmap y obtener su Uri
+    fun saveBitmapToFile(bitmap: Bitmap, context: Context): Uri? {
+        return try {
+            val filename = "temp_image_${System.currentTimeMillis()}.png"
+            val file = File(context.cacheDir, filename)
+            val fos = FileOutputStream(file)
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            fos.flush()
+            fos.close()
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+            Log.d("CameraScreen", "Foto guardada en: $uri")
+            uri
+        } catch (e: IOException) {
+            Log.e("CameraScreen", "Error al guardar la foto: ${e.localizedMessage}")
+            e.printStackTrace()
+            null
+        } catch (e: IllegalArgumentException) {
+            Log.e("CameraScreen", "Error de URI: ${e.localizedMessage}")
+            e.printStackTrace()
+            null
+        }
+    }
+
+
+    // Lanzador para tomar una foto con la cámara
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            Log.d("CameraScreen", "Bitmap recibido de la cámara")
+            val uri = saveBitmapToFile(bitmap, context)
+            if (uri != null) {
+                imageUri = uri
+                imageLoadedMessage = "Foto tomada correctamente"
+                errorMessage = null
+                Log.d("CameraScreen", "Foto guardada en: $uri")
+            } else {
+                errorMessage = "Error al guardar la foto"
+                imageLoadedMessage = null
+                Log.e("CameraScreen", "URI nulo después de guardar la foto")
+            }
+        } else {
+            errorMessage = "No se tomó ninguna foto"
+            imageLoadedMessage = null
+            Log.e("CameraScreen", "Bitmap nulo recibido de la cámara")
+        }
+    }
+
 
     // Lanzador para seleccionar una imagen desde el almacenamiento
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -570,14 +532,16 @@ fun CameraScreen(navController: NavHostController) {
         if (uri != null) {
             imageUri = uri
             errorMessage = null
-            imageLoadedMessage = "Imagen cargada"
+            imageLoadedMessage = "Imagen cargada correctamente"
+            // Opcional: Muestra la imagen en el log para depuración
+            // Log.d("CameraScreen", "Imagen seleccionada: $uri")
         } else {
             errorMessage = "No se seleccionó ninguna imagen"
             imageLoadedMessage = null
         }
     }
 
-    // Lanzador de permisos, para versiones anteriores a Android 13
+    // Permisos para acceder al almacenamiento
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -615,15 +579,36 @@ fun CameraScreen(navController: NavHostController) {
         }
     }
 
+    // Contenido de la UI
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Botón para tomar una foto
+        Button(
+            onClick = { cameraLauncher.launch() },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFFFA726),
+                contentColor = Color.White
+            )
+        ) {
+            Text("Tomar Foto")
+        }
+
+        Text("O")
+
         // Botón para abrir el selector de archivos y elegir una imagen
-        Button(onClick = { launchImagePicker() }) {
+        Button(
+            onClick = { launchImagePicker() },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFFFA726),
+                contentColor = Color.White
+            )
+        ) {
             Text("Seleccionar Imagen de INE")
         }
 
@@ -632,26 +617,56 @@ fun CameraScreen(navController: NavHostController) {
             Text(it, color = Color.Green)
         }
 
+        // Mostrar la imagen seleccionada o tomada
         imageUri?.let { uri ->
-            // Botón para analizar la imagen seleccionada
-            Button(onClick = {
-                coroutineScope.launch {
-                    try {
-                        analysisResult = analyzeImage(context, uri)
-                        errorMessage = null
-                    } catch (e: Exception) {
-                        errorMessage = "Error al analizar la imagen: ${e.message}"
+            Image(
+                painter = rememberImagePainter(uri),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(200.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+            )
+        }
+
+        imageUri?.let { uri ->
+            // Mostrar el botón de "Analizar Imagen" solo si ya se ha tomado o seleccionado una imagen
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        try {
+                            isLoading = true
+                            analysisResult = analyzeImage(context, uri)
+                            errorMessage = null
+                        } catch (e: Exception) {
+                            errorMessage = "Error al analizar la imagen: ${e.message}"
+                        } finally {
+                            isLoading = false
+                        }
                     }
-                }
-            }) {
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFA726),
+                    contentColor = Color.White
+                )
+            ) {
                 Text("Analizar Imagen")
             }
         }
 
+        // Mostrar indicador de carga
+        if (isLoading) {
+            CircularProgressIndicator()
+        }
+
         // Mostrar resultados del análisis
         if (analysisResult.isNotEmpty()) {
+            Text("Resultados del Análisis:", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(8.dp))
             analysisResult.forEach { (tag, value) ->
-                Text("$tag: $value")
+                Text("$tag:", fontWeight = FontWeight.Bold)
+                Text(value, modifier = Modifier.padding(bottom = 8.dp))
             }
         }
 
@@ -666,7 +681,9 @@ fun CameraScreen(navController: NavHostController) {
         if (analysisResult.isNotEmpty()) {
             Button(
                 onClick = {
-                    Toast.makeText(context, "Datos guardados: $analysisResult", Toast.LENGTH_LONG).show()
+                    saveDataToSharedPreferences(analysisResult)
+                    navController.popBackStack()
+                    Toast.makeText(context, "Datos guardados", Toast.LENGTH_LONG).show()
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
@@ -675,9 +692,8 @@ fun CameraScreen(navController: NavHostController) {
                 )
             ) {
                 Text("Mis datos son correctos")
-
             }
-            Text("Si sus datos son incorrectos, cargue una nueva imagen")
+            Text("Si sus datos son incorrectos, tome una nueva imagen")
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -696,425 +712,36 @@ fun CameraScreen(navController: NavHostController) {
 }
 
 
-@OptIn(ExperimentalCoroutinesApi::class)
-suspend fun analyzeImage(context: Context, uri: Uri): Map<String, String> = withContext(Dispatchers.Default) {
-    val image = InputImage.fromFilePath(context, uri)
-    val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-
-    return@withContext suspendCancellableCoroutine { continuation ->
-        recognizer.process(image)
-            .addOnSuccessListener { visionText ->
-                val extractedInfo = mutableMapOf<String, String>()
-                var currentTag: String? = null
-                var currentValue = StringBuilder()
-
-                for (block in visionText.textBlocks) {
-                    for (line in block.lines) {
-                        val lineText = line.text.trim()
-
-                        when {
-                            // Detectar "Nombre" sin repetirlo en el valor extraído
-                            lineText.lowercase().startsWith("nombre") && "Nombre" !in extractedInfo -> {
-                                if (currentTag != null) {
-                                    extractedInfo[currentTag] = currentValue.toString().trim()
-                                }
-                                currentTag = "Nombre"
-                                currentValue = StringBuilder(lineText.substringAfter("nombre", "").trim())
-                            }
-
-                            // Detectar "Domicilio" sin repetirlo en el valor extraído
-                            lineText.lowercase().startsWith("domicilio") && "Domicilio" !in extractedInfo -> {
-                                if (currentTag != null) {
-                                    extractedInfo[currentTag] = currentValue.toString().trim()
-                                }
-                                currentTag = "Domicilio"
-                                currentValue = StringBuilder(lineText.substringAfter("domicilio", "").trim())
-                            }
-
-                            // Detectar "CURP" sin repetirlo en el valor extraído
-                            lineText.lowercase().startsWith("curp") && "CURP" !in extractedInfo -> {
-                                if (currentTag != null) {
-                                    extractedInfo[currentTag] = currentValue.toString().trim()
-                                }
-                                currentTag = "CURP"
-                                currentValue = StringBuilder(lineText.substringAfter("curp", "").trim())
-                            }
-
-                            // Detectar "Fecha de Nacimiento" sin repetirlo en el valor extraído
-                            lineText.lowercase().startsWith("fecha de nacimiento") && "Fecha de Nacimiento" !in extractedInfo -> {
-                                if (currentTag != null) {
-                                    extractedInfo[currentTag] = currentValue.toString().trim()
-                                }
-                                currentTag = "Fecha de Nacimiento"
-                                currentValue = StringBuilder(lineText.substringAfter("fecha de nacimiento", "").trim())
-                            }
-
-                            // Separar información adicional
-                            lineText.lowercase().contains("sexo") -> {
-                                extractedInfo["Sexo"] = lineText.substringAfter(":").trim()
-                            }
-                            lineText.lowercase().contains("año de registro") -> {
-                                extractedInfo["Año de Registro"] = lineText.substringAfter(":").trim()
-                            }
-                            lineText.lowercase().contains("municipio") -> {
-                                extractedInfo["Municipio"] = lineText.substringAfter(":").trim()
-                            }
-                            lineText.lowercase().contains("localidad") -> {
-                                extractedInfo["Localidad"] = lineText.substringAfter(":").trim()
-                            }
-                            lineText.lowercase().contains("emision") -> {
-                                extractedInfo["Emisión"] = lineText.substringAfter(":").trim()
-                            }
-                            lineText.lowercase().contains("vigencia") -> {
-                                extractedInfo["Vigencia"] = lineText.substringAfter(":").trim()
-                            }
-
-                            else -> {
-                                if (currentTag != null) {
-                                    currentValue.append(" ").append(lineText)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Añadir el último campo procesado
-                if (currentTag != null) {
-                    extractedInfo[currentTag] = currentValue.toString().trim()
-                }
-
-                continuation.resume(extractedInfo) {}
-            }
-            .addOnFailureListener { e ->
-                continuation.resumeWithException(e)
-            }
-    }
-}
-
-
-
-
-
-@RequiresApi(Build.VERSION_CODES.FROYO)
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AfiliateForm() {
-    var nombre by remember { mutableStateOf("") }
-    var correo by remember { mutableStateOf("") }
-    var telefono by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
-    var isError by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
-    var showDetailsDialog by remember { mutableStateOf(false) } // Estado para mostrar el diálogo
-
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-
-    // Validaciones básicas
-    fun isFormValid(): Boolean {
-        return when {
-            nombre.isBlank() -> {
-                message = "El nombre es obligatorio."
-                isError = true
-                false
-            }
-            correo.isBlank() -> {
-                message = "El correo es obligatorio."
-                isError = true
-                false
-            }
-            telefono.isBlank() -> {
-                message = "El teléfono es obligatorio."
-                isError = true
-                false
-            }
-            password.isBlank() -> {
-                message = "La contraseña es obligatoria."
-                isError = true
-                false
-            }
-            !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches() -> {
-                message = "El correo electrónico no es válido."
-                isError = true
-                false
-            }
-            else -> true
-        }
-    }
-
-    // Función para enviar el formulario
-    fun submitForm() {
-        coroutineScope.launch {
-            if (!isFormValid()) return@launch
-
-            isLoading = true
-            val apiService = ApiService(context)
-            val responseMessage = try {
-                val response = apiService.createPortalUser(
-                    email = correo,
-                    name = nombre,
-                    password = password,
-                    phone = telefono,
-                    companyId = 1
-                )
-
-                if (response) {
-                    "Usuario creado exitosamente"
-                } else {
-                  //  "Error: el servidor no pudo procesar la solicitud."
-                    "Usuario creado exitosamente?"
-                }
-            } catch (e: Exception) {
-                isError = true
-                "Error inesperado: ${e.message}"
-            } finally {
-                isLoading = false
-            }
-
-            message = responseMessage
-            showDetailsDialog = true
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
-        Text("Formulario de Afiliación", style = MaterialTheme.typography.titleMedium)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = nombre,
-            onValueChange = { nombre = it },
-            label = { Text("Nombre") },
-            modifier = Modifier.fillMaxWidth(),
-            isError = nombre.isBlank(),
-            enabled = !isLoading
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = correo,
-            onValueChange = { correo = it },
-            label = { Text("Correo") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            isError = correo.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches(),
-            enabled = !isLoading
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = telefono,
-            onValueChange = { telefono = it },
-            label = { Text("Teléfono") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-            isError = telefono.isBlank(),
-            enabled = !isLoading
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Contraseña") },
-            modifier = Modifier.fillMaxWidth(),
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            isError = password.isBlank(),
-            enabled = !isLoading
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Botones de Cancelar y Enviar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Button(
-                onClick = {
-                    nombre = ""
-                    correo = ""
-                    telefono = ""
-                    password = ""
-                    message = ""
-                    isError = false
-                },
-                modifier = Modifier.weight(1f),
-                enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFA726),
-                    contentColor = Color.White
-                )
-            ) {
-                Text("Cancelar")
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Button(
-                onClick = {
-                    if (!isLoading) {
-                        submitForm()
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFA726),
-                    contentColor = Color.White
-                )
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text("Enviar")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Mostrar el mensaje de éxito o error
-        if (message.isNotEmpty()) {
-            Text(
-                text = message,
-                color = if (isError) Color.Red else Color.Green,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-
-        Spacer(modifier = Modifier.height(80.dp))
-    }
-
-    // Mostrar diálogo de detalles si hay un mensaje
-    if (showDetailsDialog) {
-        AlertDialog(
-            onDismissRequest = { showDetailsDialog = false },
-            title = { Text("Formulario dice:") },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = { showDetailsDialog = false }) {
-                    Text("Cerrar")
-                }
-            }
-        )
-    }
-}
-
-
-
-
-
-@Composable
-fun GrupoForm() {
-    var nombreGrupo by remember { mutableStateOf("") }
-    var representante by remember { mutableStateOf("") }
-    var cantidadPersonas by remember { mutableStateOf("") }
-    var procedencia by remember { mutableStateOf("") }
-    var numeroContacto by remember { mutableStateOf("") }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
-        Text("Formulario de Creación de Grupo", style = MaterialTheme.typography.titleMedium)
-
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = nombreGrupo,
-            onValueChange = { nombreGrupo = it },
-            label = { Text("Nombre del Grupo") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = representante,
-            onValueChange = { representante = it },
-            label = { Text("Representante") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = cantidadPersonas,
-            onValueChange = { cantidadPersonas = it },
-            label = { Text("Cantidad de Personas") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = procedencia,
-            onValueChange = { procedencia = it },
-            label = { Text("Procedencia") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = numeroContacto,
-            onValueChange = { numeroContacto = it },
-            label = { Text("Número de Contacto") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Botones de Cancelar y Enviar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Button(
-                onClick = { /* Acción de cancelar */ },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Cancelar")
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Button(
-                onClick = { /* Acción de enviar */ },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Enviar")
-            }
-        }
-        Spacer(modifier = Modifier.height(100.dp))
-    }
-}
-
-
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun Subsidios(navController: NavHostController, userViewModel: UserViewModel) {
-    // Subsidio de ejemplo
-    val subsidio = Subsidio("Subsidio Ejemplo", "Descripción del subsidio de ejemplo", 150.0)
-
+fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, apiService: ApiService) {
     var showDetailsDialog by remember { mutableStateOf(false) }
+    var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+
+    // Estado para los productos obtenidos
+    val products = remember { mutableStateOf<List<Product>>(emptyList()) }
+
+    // Llamada para obtener los productos disponibles al iniciar la pantalla
+    LaunchedEffect(Unit) {
+        try {
+            val availableProducts = apiService.getAvailableProducts()
+            Log.d("Subsidios", "Available Products: $availableProducts")
+            if (availableProducts != null) {
+                products.value = availableProducts
+            } else {
+                Log.e("Subsidios", "No se encontraron productos disponibles")
+            }
+        } catch (e: Exception) {
+            Log.e("Subsidios", "Error al obtener productos: ${e.message}")
+        }
+    }
+
+    // Filtrar la lista de productos basándose en la consulta de búsqueda
+    val filteredProducts = products.value.filter {
+        it.name.contains(searchQuery, ignoreCase = true)
+    }
 
     Scaffold(
         bottomBar = { MyAppNavBar(navController) }
@@ -1123,99 +750,133 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = "Subsidios",
+                text = "Productos Disponibles",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            // Filtro de búsqueda (solo visual)
+
+            // Filtro de búsqueda
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                label = { Text("Buscar subsidio") },
+                label = { Text("Buscar producto") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
             )
+
             Spacer(modifier = Modifier.height(16.dp))
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clickable { showDetailsDialog = true },
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFFFA726)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = subsidio.nombre,
-                        fontWeight = FontWeight.Bold
-                    )
+            // Mostrar mensaje si no hay resultados
+            if (filteredProducts.isEmpty()) {
+                Text(
+                    text = "No se encontraron productos.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic
+                )
+            } else {
+                // Mostrar las tarjetas de productos filtrados
+                filteredProducts.forEach { product ->
+                    Log.d("Subsidios", "Producto: ${product.name}, Descripción: ${product.description}, Imagen: ${product.image}")
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable {
+                                selectedProduct = product
+                                showDetailsDialog = true
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF818181) // Fondo de la tarjeta
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = product.name,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White // Cambiar color del texto a blanco
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = product.description,
+                                color = Color.White // Cambiar color del texto a blanco
+                            )
+
+                            // Decodificar y mostrar la imagen
+                            val bitmap = decodeBase64ToBitmap(product.image)
+                            if (bitmap != null) {
+                                Image(
+                                    bitmap = bitmap.asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp)
+                                        .padding(top = 8.dp)
+                                        .clip(RoundedCornerShape(8.dp)) // Bordes redondeados
+                                )
+                            } else {
+                                Log.e("Subsidios", "Error al decodificar la imagen para el producto: ${product.name}")
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Precio: \$${subsidio.precio}"
-                    )
                 }
             }
         }
     }
 
-    // Mostrar detalles del subsidio en un diálogo
+    // Mostrar detalles del producto en un diálogo
     if (showDetailsDialog) {
-        AlertDialog(
-            onDismissRequest = { showDetailsDialog = false },
-            title = { Text(subsidio.nombre) },
-            text = {
-                Column {
-                    Text("Precio: \$${subsidio.precio}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Descripción: ${subsidio.descripcion}")
+        selectedProduct?.let { product ->
+            AlertDialog(
+                onDismissRequest = { showDetailsDialog = false },
+                title = { Text(product.name) },
+                text = {
+                    Column {
+                        Text(product.description)
+                        val bitmap = decodeBase64ToBitmap(product.image)
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .padding(top = 8.dp)
+                                    .clip(RoundedCornerShape(8.dp)) // Bordes redondeados
+                            )
+                        } else {
+                            Log.e("Subsidios", "Error al decodificar la imagen para el producto en el diálogo: ${product.name}")
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showDetailsDialog = false }) {
+                        Text("Cerrar")
+                    }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDetailsDialog = false }) {
-                    Text("Cerrar")
-                }
-            }
-        )
-    }
-}
-
-data class Subsidio(
-    val nombre: String,
-    val descripcion: String,
-    val precio: Double,
-)
-
-
-
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-@Composable
-fun CatalogoDelMes(navController: NavHostController, userViewModel: UserViewModel) {
-    Scaffold(
-        bottomBar = { MyAppNavBar(navController) }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Catálogo del Mes",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Funcionando",
-                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
 }
+
+// Función para decodificar la imagen de base64 a Bitmap
+private fun decodeBase64ToBitmap(base64: String): Bitmap? {
+    return try {
+        val decodedString = Base64.decode(base64, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+    } catch (e: Exception) {
+        Log.e("Subsidios", "Error al decodificar la imagen: ${e.message}")
+        null
+    }
+}
+
+

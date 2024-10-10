@@ -11,9 +11,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val apiService = ApiService(this)
         setContent {
             MaterialTheme {
-                MainNavigation(userViewModel)
+                MainNavigation(userViewModel, apiService)
             }
         }
     }

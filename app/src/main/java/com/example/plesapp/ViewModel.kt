@@ -34,4 +34,14 @@ class UserViewModel() : ViewModel() {
         }
     }
 }
-data class User(val id: String?, val name: String?, val email: String?, val phone: String?)
+data class User(
+    val id: String?,
+    val name: String?,
+    val email: String?,
+    val phone: String?)
+
+data class Product(
+    val name: String,
+    val description: String,
+    val image: String
+)

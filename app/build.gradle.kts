@@ -96,5 +96,17 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     implementation ("com.google.accompanist:accompanist-permissions:0.32.0")
+    // Coroutines de Kotlin
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+
+    // Extensiones de Coroutines para Play Services
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4")
+
+    // ML Kit Text Recognition
+    implementation ("com.google.mlkit:text-recognition:16.0.0")
+
+    // Coil para cargar imágenes en Compose (opcional, si aún no lo tienes)
+    implementation ("io.coil-kt:coil-compose:2.2.2")
+
 
 }
