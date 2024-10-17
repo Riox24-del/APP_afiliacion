@@ -80,24 +80,34 @@ class ApiService(private val context: Context) {
         name: String,
         password: String,
         phone: String,
-        companyId: Int
+        companyId: Int,
+        domicilio: String,         // Nuevo campo para dirección
+        sexo: String,              // Nuevo campo para sexo
+        curp: String,              // Nuevo campo para CURP
+        fechaNacimiento: String    // Nuevo campo para fecha de nacimiento
     ): Boolean {
         authenticate()
         val url = registerUrl
         println("Using Register URL: $url")
 
+        // Crear el cuerpo de la petición JSON con los nuevos campos
         val jsonBody = JSONObject().apply {
             put("email", email)
             put("name", name)
             put("password", password)
             put("phone", phone)
             put("company_id", companyId)
+            put("domicilio", domicilio)             // Añadido
+            put("sexo", sexo)                       // Añadido
+            put("curp", curp)                       // Añadido
+            put("fecha_nacimiento", fechaNacimiento) // Añadido
         }
 
         val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
 
         println("Headers: login=$usuario, password=$contrasena, api-key=$apiKey, database=afiliacion")
 
+        // Crear la petición
         val requestBuilder = Request.Builder()
             .url(url)
             .post(requestBody)
@@ -107,6 +117,7 @@ class ApiService(private val context: Context) {
             .addHeader("database", "afiliacion")
             .addHeader("Content-Type", "application/json")
 
+        // Ejecutar la petición dentro de un contexto de IO
         return withContext(Dispatchers.IO) {
             try {
                 val response = clientAPI.newCall(requestBuilder.build()).execute()
@@ -130,46 +141,47 @@ class ApiService(private val context: Context) {
         }
     }
 
-    suspend fun getAvailableProducts(): List<Product>? {
-        authenticate()
-        val requestBuilder = Request.Builder()
-            .url(productsUrl)
-            .get()
-            .addHeader("login", usuario)
-            .addHeader("password", contrasena)
-            .addHeader("api-key", apiKey)
-            .addHeader("Content-Type", "application/json")
 
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = clientAPI.newCall(requestBuilder.build()).execute()
-                val responseBody = response.body?.string()
+        suspend fun getAvailableProducts(): List<Product>? {
+            authenticate()
+            val requestBuilder = Request.Builder()
+                .url(productsUrl)
+                .get()
+                .addHeader("login", usuario)
+                .addHeader("password", contrasena)
+                .addHeader("api-key", apiKey)
+                .addHeader("Content-Type", "application/json")
 
-                if (response.isSuccessful && responseBody != null) {
-                    val jsonArray = JSONArray(responseBody)
-                    val productList = mutableListOf<Product>()
+            return withContext(Dispatchers.IO) {
+                try {
+                    val response = clientAPI.newCall(requestBuilder.build()).execute()
+                    val responseBody = response.body?.string()
 
-                    for (i in 0 until jsonArray.length()) {
-                        val jsonProduct = jsonArray.getJSONObject(i)
-                        val product = Product(
-                            name = jsonProduct.getString("name"),
-                            description = jsonProduct.getString("description"),
-                            image = jsonProduct.getString("image")
-                        )
-                        productList.add(product)
+                    if (response.isSuccessful && responseBody != null) {
+                        val jsonArray = JSONArray(responseBody)
+                        val productList = mutableListOf<Product>()
 
+                        for (i in 0 until jsonArray.length()) {
+                            val jsonProduct = jsonArray.getJSONObject(i)
+                            val product = Product(
+                                name = jsonProduct.getString("name"),
+                                description = jsonProduct.getString("description"),
+                                image = jsonProduct.getString("image")
+                            )
+                            productList.add(product)
+
+                        }
+                        return@withContext productList
+                    } else {
+                        null
                     }
-                    return@withContext productList
-                } else {
+                } catch (e: IOException) {
+                    e.printStackTrace()
                     null
                 }
-            } catch (e: IOException) {
-                e.printStackTrace()
-                null
             }
         }
     }
-}
 
 
 

@@ -12,6 +12,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,16 +27,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +67,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 
 //animacion de inicio
@@ -66,11 +77,11 @@ import kotlinx.coroutines.tasks.await
 fun AnimatedSplashScreen() {
     val descendingTextPosition by animateDpAsState(
         targetValue = 50.dp,
-        animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
+        animationSpec = tween(durationMillis = 4000, easing = LinearEasing)
     )
     val ascendingTextPosition by animateDpAsState(
         targetValue = (-50).dp,
-        animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
+        animationSpec = tween(durationMillis = 4000, easing = LinearEasing)
     )
     // Fondo degradado naranja
     val gradientBrush = Brush.verticalGradient(
@@ -268,12 +279,15 @@ suspend fun analyzeImage(context: Context, uri: Uri): Map<String, String> {
 }
 
 
-//formulario de afiliacion
-@RequiresApi(Build.VERSION_CODES.FROYO)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AfiliateForm(navController: NavHostController) {
+    // Variables de estado para los campos
     var nombre by remember { mutableStateOf("") }
+    var domicilio by remember { mutableStateOf("") }
+    var sexo by remember { mutableStateOf("") }
+    var curp by remember { mutableStateOf("") }
+    var fechaNacimiento by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -285,6 +299,30 @@ fun AfiliateForm(navController: NavHostController) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
+    // Función para cargar los datos guardados en SharedPreferences
+    fun loadDataFromSharedPreferences() {
+        val sharedPreferences = context.getSharedPreferences("AfiliatePrefs", Context.MODE_PRIVATE)
+        nombre = sharedPreferences.getString("name", "") ?: ""
+        domicilio = sharedPreferences.getString("domicilio", "") ?: ""
+        sexo = sharedPreferences.getString("sexo", "") ?: ""
+        curp = sharedPreferences.getString("curp", "") ?: ""
+        fechaNacimiento = sharedPreferences.getString("fechaNacimiento", "") ?: ""
+        telefono = sharedPreferences.getString("telefono", "") ?: ""
+        correo = sharedPreferences.getString("correo", "") ?: ""
+        // Nota: No cargamos la contraseña por razones de seguridad
+
+        Log.d(
+            "AfiliateForm",
+            "Datos cargados: Nombre=$nombre, Domicilio=$domicilio, Sexo=$sexo, CURP=$curp, FechaNacimiento=$fechaNacimiento, Telefono=$telefono, Correo=$correo"
+        )
+    }
+
+    // Llamar a la función para cargar los datos cuando la Composable se inicie
+    LaunchedEffect(Unit) {
+        loadDataFromSharedPreferences()
+    }
+
+    // Función para validar el formulario
     fun isFormValid(): Boolean {
         return when {
             nombre.isBlank() -> {
@@ -292,30 +330,81 @@ fun AfiliateForm(navController: NavHostController) {
                 isError = true
                 false
             }
-            correo.isBlank() -> {
-                message = "El correo es obligatorio."
+
+            domicilio.isBlank() -> {
+                message = "El domicilio es obligatorio."
                 isError = true
                 false
             }
+
+            sexo.isBlank() -> {
+                message = "El sexo es obligatorio."
+                isError = true
+                false
+            }
+
+            curp.isBlank() -> {
+                message = "El CURP es obligatorio."
+                isError = true
+                false
+            }
+
+            curp.length != 18 -> { // CURP estándar tiene 18 caracteres
+                message = "El CURP debe tener 18 caracteres."
+                isError = true
+                false
+            }
+
+            fechaNacimiento.isBlank() -> {
+                message = "La fecha de nacimiento es obligatoria."
+                isError = true
+                false
+            }
+
             telefono.isBlank() -> {
                 message = "El teléfono es obligatorio."
                 isError = true
                 false
             }
+
             password.isBlank() -> {
                 message = "La contraseña es obligatoria."
                 isError = true
                 false
             }
+
+            correo.isBlank() -> {
+                message = "El correo es obligatorio."
+                isError = true
+                false
+            }
+
             !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches() -> {
                 message = "El correo electrónico no es válido."
                 isError = true
                 false
             }
+
             else -> true
         }
     }
 
+    // Función para guardar todos los datos en SharedPreferences
+    fun saveDataToSharedPreferences() {
+        val sharedPreferences = context.getSharedPreferences("AfiliatePrefs", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putString("name", nombre)
+        editor.putString("domicilio", domicilio)
+        editor.putString("sexo", sexo)
+        editor.putString("curp", curp)
+        editor.putString("fechaNacimiento", fechaNacimiento)
+        editor.putString("telefono", telefono)
+        editor.putString("correo", correo)
+        // No guardamos la contraseña por razones de seguridad
+        editor.apply()
+    }
+
+    // Función para enviar el formulario
     fun submitForm() {
         coroutineScope.launch {
             if (!isFormValid()) return@launch
@@ -328,14 +417,18 @@ fun AfiliateForm(navController: NavHostController) {
                     name = nombre,
                     password = password,
                     phone = telefono,
-                    companyId = 1
+                    companyId = 1,
+                    domicilio = domicilio,
+                    sexo = sexo,
+                    curp = curp,
+                    fechaNacimiento = fechaNacimiento
                 )
 
                 if (response) {
+                    saveDataToSharedPreferences()
                     "Usuario creado exitosamente"
                 } else {
-                    //"Error al crear usuario."
-                    "Usuario creado exitosamente"
+                    "Error al crear el usuario"
                 }
             } catch (e: Exception) {
                 isError = true
@@ -349,143 +442,239 @@ fun AfiliateForm(navController: NavHostController) {
         }
     }
 
+    // UI del formulario
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text("Registra tus datos", style = MaterialTheme.typography.titleMedium)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = nombre,
-            onValueChange = { nombre = it },
-            label = { Text("Nombre") },
-            modifier = Modifier.fillMaxWidth(),
-            isError = nombre.isBlank(),
-            enabled = !isLoading
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = correo,
-            onValueChange = { correo = it },
-            label = { Text("Correo") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            isError = correo.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches(),
-            enabled = !isLoading
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = telefono,
-            onValueChange = { telefono = it },
-            label = { Text("Teléfono") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-            isError = telefono.isBlank(),
-            enabled = !isLoading
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Contraseña") },
-            modifier = Modifier.fillMaxWidth(),
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            isError = password.isBlank(),
-            enabled = !isLoading
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
+        // Contenido con scroll
+        val scrollState = rememberScrollState()
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .fillMaxSize()
+                .verticalScroll(scrollState)
         ) {
-            Button(
-                onClick = {
-                    if (!isLoading) {
-                        submitForm()
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFA726),
-                    contentColor = Color.White
-                )
+            Text("Registra tus datos", style = MaterialTheme.typography.titleMedium)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Campos de entrada (Nombre, Domicilio, etc.)
+            OutlinedTextField(
+                value = nombre,
+                onValueChange = { nombre = it },
+                label = { Text("Nombre") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = nombre.isBlank(),
+                enabled = !isLoading
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = domicilio,
+                onValueChange = { domicilio = it },
+                label = { Text("Domicilio") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = domicilio.isBlank(),
+                enabled = !isLoading
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SexoSelector(sexo = sexo, onSexoSeleccionado = { sexo = it }, enabled = !isLoading)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = curp,
+                onValueChange = { curp = it },
+                label = { Text("CURP") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = curp.isBlank() || curp.length != 18,
+                enabled = !isLoading
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            FechaNacimientoField(
+                fechaNacimiento = fechaNacimiento,
+                onFechaSeleccionada = { fechaNacimiento = it },
+                enabled = !isLoading
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = correo,
+                onValueChange = { correo = it },
+                label = { Text("Correo") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = correo.isBlank(),
+                enabled = !isLoading
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = telefono,
+                onValueChange = { telefono = it },
+                label = { Text("Teléfono") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Contraseña") },
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = PasswordVisualTransformation(),
+                enabled = !isLoading
+            )
+
+            // Fila para los botones
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
+                Button(
+                    onClick = {
+                        if (!isLoading) {
+                            submitForm()
+                        }
+                    },
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    enabled = !isLoading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFFA726),
+                        contentColor = Color.White
                     )
-                } else {
-                    Text("Enviar")
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Enviar")
+                    }
+                }
+
+                Button(
+                    onClick = { navController.navigate("camera") },
+                    modifier = Modifier.weight(1f).padding(start = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFFA726),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Escanea tu INE")
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // Agregar fila con texto "O"
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text("O")
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Botón para mostrar/ocultar el formulario
-        Button(
-            onClick = { navController.navigate("camera") },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFFFA726),
-                contentColor = Color.White
-            )
-        ) {
-            Text("Escanea una foto de tu INE")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (message.isNotEmpty()) {
-            Text(
-                text = message,
-                color = if (isError) Color.Red else Color.Green,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-    }
-
-    if (showDetailsDialog) {
-        AlertDialog(
-            onDismissRequest = { showDetailsDialog = false },
-            title = { Text("Formulario dice:") },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = { showDetailsDialog = false }) {
-                    Text("Cerrar")
+        // Diálogo de mensaje
+        if (showDetailsDialog) {
+            AlertDialog(
+                onDismissRequest = { showDetailsDialog = false },
+                title = { Text("Formulario dice:") },
+                text = { Text(message) },
+                confirmButton = {
+                    TextButton(onClick = { showDetailsDialog = false }) {
+                        Text("Cerrar")
+                    }
                 }
-            }
-        )
+            )
+        }
+
     }
 }
 
+    @Composable
+fun SexoSelector(
+    sexo: String,
+    onSexoSeleccionado: (String) -> Unit,
+    enabled: Boolean = true
+) {
+    val opcionesSexo = listOf("Masculino", "Femenino", "Otro")
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        OutlinedTextField(
+            value = sexo,
+            onValueChange = {},
+            label = { Text("Sexo") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled) { if (enabled) expanded = true },
+            enabled = false,
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Seleccionar Sexo",
+                    modifier = Modifier.clickable(enabled = enabled) { if (enabled) expanded = true }
+                )
+            },
+            isError = sexo.isBlank()
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            opcionesSexo.forEach { opcion ->
+                DropdownMenuItem(
+                    text = { Text(opcion) },
+                    onClick = {
+                        onSexoSeleccionado(opcion)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FechaNacimientoField(
+    fechaNacimiento: String,
+    onFechaSeleccionada: (String) -> Unit,
+    enabled: Boolean = true
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val calendar = Calendar.getInstance()
+
+    Column {
+        OutlinedTextField(
+            value = fechaNacimiento,
+            onValueChange = {},
+            label = { Text("Fecha de Nacimiento (dd/mm/yyyy)") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled) { if (enabled) showDatePicker = true },
+            enabled = false,
+            isError = fechaNacimiento.isBlank(),
+            trailingIcon = {
+            /*    Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = "Seleccionar Fecha",
+                    modifier = Modifier.clickable(enabled = enabled) { if (enabled) showDatePicker = true }
+                )*/
+            }
+        )
+
+    }
+}
 
 
 

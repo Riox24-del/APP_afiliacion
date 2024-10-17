@@ -130,19 +130,37 @@ fun MyApp(navController: NavHostController, userViewModel: UserViewModel) {
 fun MyAppNavBar(navController: NavHostController) {
     NavigationBar {
         NavigationBarItem(
-            icon = { Icon(Icons.Filled.Home, "Inicio") },
+            icon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.home),
+                    contentDescription = "Inicio"
+                )
+            },
+            modifier = Modifier.size(24.dp),
             label = { Text("Inicio") },
             selected = navController.currentDestination?.route == "inicio",
             onClick = { navController.navigate("inicio") }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Filled.Home, "Afiliate") },
+            icon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.document),
+                    contentDescription = "Inicio"
+                )
+            },
             label = { Text("Afiliate") },
+            modifier = Modifier.size(24.dp),
             selected = navController.currentDestination?.route == "afiliate",
             onClick = { navController.navigate("afiliate") }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Filled.Home, "Subsidios") },
+            icon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.shop),
+                    contentDescription = "Inicio"
+                )
+            },
+            modifier = Modifier.size(24.dp),
             label = { Text("Subsidios") },
             selected = navController.currentDestination?.route == "subsidios",
             onClick = { navController.navigate("subsidios") }
@@ -470,9 +488,15 @@ fun CameraScreen(navController: NavHostController) {
 
     // Función para guardar los resultados en SharedPreferences
     fun saveDataToSharedPreferences(analysisResult: Map<String, String>) {
-        val sharedPreferences = context.getSharedPreferences("CameraData", Context.MODE_PRIVATE)
+        val sharedPreferences = context.getSharedPreferences("AfiliatePrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
-        analysisResult.forEach { (key, value) -> editor.putString(key, value) }
+        analysisResult.forEach { (key, value) ->
+            when (key) {
+                "Nombre" -> editor.putString("name", value)
+                // "Domicilio" -> editor.putString("domicilio", value)
+                // "CURP" -> editor.putString("curp", value)
+            }
+        }
         editor.apply()
     }
 
@@ -499,7 +523,6 @@ fun CameraScreen(navController: NavHostController) {
         }
     }
 
-
     // Lanzador para tomar una foto con la cámara
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview()
@@ -524,8 +547,7 @@ fun CameraScreen(navController: NavHostController) {
         }
     }
 
-
-    // Lanzador para seleccionar una imagen desde el almacenamiento
+    // seleccionar una imagen desde el almacenamiento
     val imagePickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -533,8 +555,6 @@ fun CameraScreen(navController: NavHostController) {
             imageUri = uri
             errorMessage = null
             imageLoadedMessage = "Imagen cargada correctamente"
-            // Opcional: Muestra la imagen en el log para depuración
-            // Log.d("CameraScreen", "Imagen seleccionada: $uri")
         } else {
             errorMessage = "No se seleccionó ninguna imagen"
             imageLoadedMessage = null

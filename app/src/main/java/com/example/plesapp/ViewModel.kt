@@ -38,7 +38,13 @@ data class User(
     val id: String?,
     val name: String?,
     val email: String?,
-    val phone: String?)
+    val phone: String?,
+    val domicilio: String?,
+    val sexo: String?,
+    val curp: String?,
+    val fechaNacimiento: String?    
+)
+
 
 data class Product(
     val name: String,
