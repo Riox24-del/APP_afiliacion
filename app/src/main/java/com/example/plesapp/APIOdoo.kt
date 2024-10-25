@@ -1,22 +1,18 @@
 package com.example.plesapp
 
 import android.content.Context
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 
+@OptIn(kotlinx.serialization.InternalSerializationApi::class)
 @Serializable
 data class RecordPartner(
     val id: Int,
@@ -25,10 +21,12 @@ data class RecordPartner(
     val phone: String?,
 )
 
+@OptIn(kotlinx.serialization.InternalSerializationApi::class)
 @Serializable
 data class ApiResponsePartners(
     val partners: List<RecordPartner>
 )
+
 
 class ApiService(private val context: Context) {
     private val clientAPI = OkHttpClient()

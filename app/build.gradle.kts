@@ -105,8 +105,10 @@ dependencies {
     // ML Kit Text Recognition
     implementation ("com.google.mlkit:text-recognition:16.0.0")
 
-    // Coil para cargar imágenes en Compose (opcional, si aún no lo tienes)
+    // Coil para cargar imágenes en Compose
     implementation ("io.coil-kt:coil-compose:2.2.2")
 
+    implementation("androidx.compose.material:material-icons-core:1.5.1")
+    implementation("androidx.compose.material:material-icons-extended:1.5.1")
 
 }
