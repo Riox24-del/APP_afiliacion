@@ -12,6 +12,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 
+
+
 @OptIn(kotlinx.serialization.InternalSerializationApi::class)
 @Serializable
 data class RecordPartner(
@@ -20,6 +22,7 @@ data class RecordPartner(
     val email: String?,
     val phone: String?,
 )
+
 
 @OptIn(kotlinx.serialization.InternalSerializationApi::class)
 @Serializable
@@ -38,6 +41,7 @@ class ApiService(private val context: Context) {
     private val host = "pruebas.stples.mx"
     private val productsUrl = "https://pruebas.stples.mx/products/available"
 
+    //funcion para autenticar y conectarse a la bd de afiliacion
     suspend fun authenticate(): String {
         val authRequest = Request.Builder()
             .url(authUrl)
@@ -59,7 +63,6 @@ class ApiService(private val context: Context) {
                             } else {
                                 "session_id=" + cookie.substringAfter("session_id=")
                             }
-
                             break
                         }
                     }
@@ -73,16 +76,17 @@ class ApiService(private val context: Context) {
         }
     }
 
+    //agregar un nuevo usuario
     suspend fun createPortalUser(
         email: String,
         name: String,
         password: String,
         phone: String,
         companyId: Int,
-        domicilio: String,         // Nuevo campo para dirección
-        sexo: String,              // Nuevo campo para sexo
-        curp: String,              // Nuevo campo para CURP
-        fechaNacimiento: String    // Nuevo campo para fecha de nacimiento
+        domicilio: String,
+        sexo: String,
+        curp: String,
+        fechaNacimiento: String
     ): Boolean {
         authenticate()
         val url = registerUrl
@@ -95,10 +99,10 @@ class ApiService(private val context: Context) {
             put("password", password)
             put("phone", phone)
             put("company_id", companyId)
-            put("domicilio", domicilio)             // Añadido
-            put("sexo", sexo)                       // Añadido
-            put("curp", curp)                       // Añadido
-            put("fecha_nacimiento", fechaNacimiento) // Añadido
+            put("domicilio", domicilio)
+            put("sexo", sexo)
+            put("curp", curp)
+            put("fecha_nacimiento", fechaNacimiento)
         }
 
         val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
@@ -139,7 +143,7 @@ class ApiService(private val context: Context) {
         }
     }
 
-
+//obtener productos habilitados
         suspend fun getAvailableProducts(): List<Product>? {
             authenticate()
             val requestBuilder = Request.Builder()

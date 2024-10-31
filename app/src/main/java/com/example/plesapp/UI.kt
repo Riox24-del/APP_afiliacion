@@ -83,6 +83,7 @@ import androidx.activity.result.launch
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.draw.clip
 import androidx.core.content.FileProvider
@@ -104,6 +105,7 @@ fun MainNavigation(userViewModel: UserViewModel, apiService: ApiService) {
         composable("afiliate") { Afiliate(navController, userViewModel) }
         composable("subsidios") { Subsidios(navController, userViewModel, apiService) }
         composable("camera") { CameraScreen(navController) }
+        composable("politicaInformacion") { PoliticaInformacionScreen(navController) }
     }
 }
 
@@ -642,13 +644,15 @@ fun CameraScreen(navController: NavHostController) {
             Image(
                 painter = rememberImagePainter(uri),
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Fit, // Ajusta a ContentScale.Fit para mantener la relación de aspecto
                 modifier = Modifier
-                    .size(200.dp)
+                    .fillMaxWidth() // Llenar el ancho disponible
+                    .height(300.dp) // Establece una altura adecuada
                     .clip(RoundedCornerShape(8.dp))
                     .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
             )
         }
+
 
         imageUri?.let { uri ->
             // Mostrar el botón de "Analizar Imagen" solo si ya se ha tomado o seleccionado una imagen
@@ -716,7 +720,86 @@ fun CameraScreen(navController: NavHostController) {
             Text("Si sus datos son incorrectos, tome una nueva imagen")
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+
+        // Botón para leer la política de información
+        TextButton(
+            onClick = { navController.navigate("politicaInformacion") },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = Color(0xFFFFA726) // Color del texto
+            )
+        ) {
+            Text("Leer Política de Información", style = MaterialTheme.typography.bodySmall) // Estilo más discreto
+        }
+
+
+        Button(
+            onClick = { navController.popBackStack() },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFFFA726),
+                contentColor = Color.White
+            )
+        ) {
+            Text("Regresar")
+        }
+
+    }
+}
+
+@Composable
+fun PoliticaInformacionScreen(navController: NavHostController) {
+    val context = LocalContext.current
+    var isChecked by remember { mutableStateOf(getCheckboxState(context)) } // Recupera el estado al iniciar
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Política de Información",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Text(
+            text = "Al aceptar, estás de acuerdo con nuestras políticas de privacidad y el manejo de tus datos personales. "
+                    + "Asegúrate de leerlas detenidamente antes de continuar.",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        // Checkmark
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = isChecked,
+                onCheckedChange = {
+                    isChecked = it
+                    saveCheckboxState(context, it) // Guarda el estado al cambiar
+                }
+            )
+            Text("He leído y acepto la política de información")
+        }
+
+        // Botón de confirmar
+        Button(
+            onClick = {
+                if (isChecked) {
+                    navController.popBackStack()
+                } else {
+                    Toast.makeText(context, "Debes aceptar la política de información", Toast.LENGTH_SHORT).show()
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFFFA726),
+                contentColor = Color.White
+            )
+        ) {
+            Text("Aceptar")
+        }
 
         Button(
             onClick = { navController.popBackStack() },

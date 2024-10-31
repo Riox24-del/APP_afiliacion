@@ -28,6 +28,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +63,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 
@@ -434,7 +438,7 @@ fun AfiliateForm(navController: NavHostController) {
     }
 
     // UI del formulario
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
@@ -494,6 +498,7 @@ fun AfiliateForm(navController: NavHostController) {
                 enabled = !isLoading
             )
 
+
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
@@ -527,11 +532,10 @@ fun AfiliateForm(navController: NavHostController) {
             )
 
             // Fila para los botones
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(vertical = 16.dp)
             ) {
                 Button(
                     onClick = {
@@ -539,7 +543,9 @@ fun AfiliateForm(navController: NavHostController) {
                             submitForm()
                         }
                     },
-                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp), // Espaciado entre botones
                     enabled = !isLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFFA726),
@@ -559,7 +565,7 @@ fun AfiliateForm(navController: NavHostController) {
 
                 Button(
                     onClick = { navController.navigate("camera") },
-                    modifier = Modifier.weight(1f).padding(start = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFFA726),
                         contentColor = Color.White
@@ -568,23 +574,25 @@ fun AfiliateForm(navController: NavHostController) {
                     Text("Escanea tu INE")
                 }
             }
-        }
 
 
-        // Diálogo de mensaje
-        if (showDetailsDialog) {
-            AlertDialog(
-                onDismissRequest = { showDetailsDialog = false },
-                title = { Text("Formulario dice:") },
-                text = { Text(message) },
-                confirmButton = {
-                    TextButton(onClick = { showDetailsDialog = false }) {
-                        Text("Cerrar")
+            // Spacer grande para permitir el scroll
+            Spacer(modifier = Modifier.height(50.dp))
+
+            // Diálogo de mensaje
+            if (showDetailsDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDetailsDialog = false },
+                    title = { Text("Formulario dice:") },
+                    text = { Text(message) },
+                    confirmButton = {
+                        TextButton(onClick = { showDetailsDialog = false }) {
+                            Text("Cerrar")
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-
     }
 }
 
@@ -645,27 +653,76 @@ fun FechaNacimientoField(
     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     val calendar = Calendar.getInstance()
 
+    // Estado del DatePicker
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = calendar.timeInMillis
+    )
+
+    // Mostrar el DatePicker cuando showDatePicker sea verdadero
+    if (showDatePicker) {
+        AlertDialog(
+            onDismissRequest = { showDatePicker = false },
+            title = { Text("Selecciona una fecha") },
+            text = {
+                DatePicker(
+                    state = datePickerState,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val selectedDateMillis = datePickerState.selectedDateMillis
+                    if (selectedDateMillis != null) {
+                        onFechaSeleccionada(sdf.format(Date(selectedDateMillis)))
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     Column {
         OutlinedTextField(
             value = fechaNacimiento,
-            onValueChange = {},
+            onValueChange = {}, // Mantener vacío ya que no se puede editar
             label = { Text("Fecha de Nacimiento (dd/mm/yyyy)") },
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = enabled) { if (enabled) showDatePicker = true },
-            enabled = false,
+                .clickable(enabled = false) {}, // Desactivar el clic en el TextField
+            enabled = false, // Hacer el TextField no editable
             isError = fechaNacimiento.isBlank(),
             trailingIcon = {
-               Icon(
+                Icon(
                     imageVector = Icons.Filled.CalendarToday,
                     contentDescription = "Seleccionar Fecha",
-                    modifier = Modifier.clickable(enabled = enabled) { if (enabled) showDatePicker = true }
+                    modifier = Modifier
+                        .clickable(enabled = enabled) { if (enabled) showDatePicker = true }
+                        .padding(16.dp)
                 )
             }
-
         )
-
     }
+}
+
+
+
+
+//para el checkmark
+fun saveCheckboxState(context: Context, isChecked: Boolean) {
+    val sharedPreferences = context.getSharedPreferences("PoliticaPrefs", Context.MODE_PRIVATE)
+    sharedPreferences.edit().putBoolean("isChecked", isChecked).apply()
+}
+
+fun getCheckboxState(context: Context): Boolean {
+    val sharedPreferences = context.getSharedPreferences("PoliticaPrefs", Context.MODE_PRIVATE)
+    return sharedPreferences.getBoolean("isChecked", false) // Devuelve false si no se encuentra el valor
 }
 
 
