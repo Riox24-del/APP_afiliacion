@@ -824,7 +824,7 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
     var searchQuery by remember { mutableStateOf("") }
 
     // Estado para los productos obtenidos
-    val products = remember { mutableStateOf<List<Product>>(emptyList()) }
+    val products = remember { mutableStateOf(emptyList<Product>()) }
 
     // Llamada para obtener los productos disponibles al iniciar la pantalla
     LaunchedEffect(Unit) {
@@ -848,12 +848,12 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
 
     Scaffold(
         bottomBar = { MyAppNavBar(navController) }
-    ) {
+    ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
+                .padding(paddingValues)
                 .padding(16.dp)
-                .verticalScroll(rememberScrollState())
         ) {
             Text(
                 text = "Productos Disponibles",
@@ -873,64 +873,30 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Mostrar mensaje si no hay resultados
             if (filteredProducts.isEmpty()) {
+                // Mostrar mensaje si no hay resultados
                 Text(
                     text = "No se encontraron productos.",
                     style = MaterialTheme.typography.bodyMedium,
                     fontStyle = FontStyle.Italic
                 )
             } else {
-                // Mostrar las tarjetas de productos filtrados
-                filteredProducts.forEach { product ->
-                    Log.d("Subsidios", "Producto: ${product.name}, Descripción: ${product.description}, Imagen: ${product.image}")
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable {
+                // Usar Column con scroll para listas grandes
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    filteredProducts.forEach { product ->
+                        ProductCard(
+                            product = product,
+                            onClick = {
                                 selectedProduct = product
                                 showDetailsDialog = true
-                            },
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF818181) // Fondo de la tarjeta
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = product.name,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White // Cambiar color del texto a blanco
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = product.description,
-                                color = Color.White // Cambiar color del texto a blanco
-                            )
-
-                            // Decodificar y mostrar la imagen
-                            val bitmap = decodeBase64ToBitmap(product.image)
-                            if (bitmap != null) {
-                                Image(
-                                    bitmap = bitmap.asImageBitmap(),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp)
-                                        .padding(top = 8.dp)
-                                        .clip(RoundedCornerShape(8.dp)) // Bordes redondeados
-                                )
-                            } else {
-                                Log.e("Subsidios", "Error al decodificar la imagen para el producto: ${product.name}")
                             }
-                        }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -954,7 +920,7 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
                                     .fillMaxWidth()
                                     .height(200.dp)
                                     .padding(top = 8.dp)
-                                    .clip(RoundedCornerShape(8.dp)) // Bordes redondeados
+                                    .clip(RoundedCornerShape(8.dp))
                             )
                         } else {
                             Log.e("Subsidios", "Error al decodificar la imagen para el producto en el diálogo: ${product.name}")
@@ -971,6 +937,51 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
     }
 }
 
+@Composable
+fun ProductCard(product: Product, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFFF9752)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = product.name,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = product.description,
+                color = Color.White
+            )
+
+            // Decodificar y mostrar la imagen
+            val bitmap = decodeBase64ToBitmap(product.image)
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .padding(top = 8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+            } else {
+                Log.e("Subsidios", "Error al decodificar la imagen para el producto: ${product.name}")
+            }
+        }
+    }
+}
+
 // Función para decodificar la imagen de base64 a Bitmap
 private fun decodeBase64ToBitmap(base64: String): Bitmap? {
     return try {
@@ -981,5 +992,3 @@ private fun decodeBase64ToBitmap(base64: String): Bitmap? {
         null
     }
 }
-
-
