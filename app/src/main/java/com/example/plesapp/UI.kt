@@ -495,8 +495,12 @@ fun CameraScreen(navController: NavHostController) {
         analysisResult.forEach { (key, value) ->
             when (key) {
                 "Nombre" -> editor.putString("name", value)
-                // "Domicilio" -> editor.putString("domicilio", value)
-                // "CURP" -> editor.putString("curp", value)
+                "Domicilio" -> editor.putString("domicilio", value)
+                "Sexo" -> editor.putString("sexo", value)
+                "CURP" -> editor.putString("curp", value)
+                "Fecha de Nacimiento" -> editor.putString("fechaNacimiento", value)
+                "Teléfono" -> editor.putString("telefono", value)
+                "Correo Electrónico" -> editor.putString("correo", value)
             }
         }
         editor.apply()
@@ -717,7 +721,8 @@ fun CameraScreen(navController: NavHostController) {
             ) {
                 Text("Mis datos son correctos")
             }
-            Text("Si sus datos son incorrectos, tome una nueva imagen")
+            Text("Si sus datos son incorrectos, tome o cargue una nueva imagen")
+            Text("Si algunos de sus datos no son aparecieron, guarde y agreguelos manualmente")
         }
 
 
@@ -823,8 +828,9 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var searchQuery by remember { mutableStateOf("") }
 
-    // Estado para los productos obtenidos
+    // Estado para los productos obtenidos y el estado de carga
     val products = remember { mutableStateOf(emptyList<Product>()) }
+    var isLoading by remember { mutableStateOf(true) }
 
     // Llamada para obtener los productos disponibles al iniciar la pantalla
     LaunchedEffect(Unit) {
@@ -838,6 +844,8 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
             }
         } catch (e: Exception) {
             Log.e("Subsidios", "Error al obtener productos: ${e.message}")
+        } finally {
+            isLoading = false // Finalizar el estado de carga
         }
     }
 
@@ -873,29 +881,39 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (filteredProducts.isEmpty()) {
-                // Mostrar mensaje si no hay resultados
-                Text(
-                    text = "No se encontraron productos.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontStyle = FontStyle.Italic
-                )
-            } else {
-                // Usar Column con scroll para listas grandes
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
+            if (isLoading) {
+                // Mostrar el indicador de carga
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    filteredProducts.forEach { product ->
-                        ProductCard(
-                            product = product,
-                            onClick = {
-                                selectedProduct = product
-                                showDetailsDialog = true
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                    CircularProgressIndicator()
+                }
+            } else {
+                if (filteredProducts.isEmpty()) {
+                    // Mostrar mensaje si no hay resultados
+                    Text(
+                        text = "No se encontraron productos.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = FontStyle.Italic
+                    )
+                } else {
+                    // Usar Column con scroll para listas grandes
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        filteredProducts.forEach { product ->
+                            ProductCard(
+                                product = product,
+                                onClick = {
+                                    selectedProduct = product
+                                    showDetailsDialog = true
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
             }
@@ -936,6 +954,7 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
         }
     }
 }
+
 
 @Composable
 fun ProductCard(product: Product, onClick: () -> Unit) {

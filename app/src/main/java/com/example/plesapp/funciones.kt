@@ -306,10 +306,7 @@ fun AfiliateForm(navController: NavHostController) {
         correo = sharedPreferences.getString("correo", "") ?: ""
         // Nota: No cargamos la contraseña por razones de seguridad
 
-        Log.d(
-            "AfiliateForm",
-            "Datos cargados: Nombre=$nombre, Domicilio=$domicilio, Sexo=$sexo, CURP=$curp, FechaNacimiento=$fechaNacimiento, Telefono=$telefono, Correo=$correo"
-        )
+        Log.d("AfiliateForm", "Datos cargados: Nombre=$nombre, Domicilio=$domicilio, Sexo=$sexo, CURP=$curp, FechaNacimiento=$fechaNacimiento, Telefono=$telefono, Correo=$correo")
     }
 
     // Llamar a la función para cargar los datos cuando la Composable se inicie
@@ -319,72 +316,34 @@ fun AfiliateForm(navController: NavHostController) {
 
     // Función para validar el formulario
     fun isFormValid(): Boolean {
-        return when {
-            nombre.isBlank() -> {
-                message = "El nombre es obligatorio."
-                isError = true
-                false
-            }
+        val isNombreValid = nombre.isNotBlank()
+        val isDomicilioValid = domicilio.isNotBlank()
+        val isSexoValid = sexo.isNotBlank()
+        val isCurpValid = curp.isNotBlank() && curp.length == 18
+        val isFechaNacimientoValid = fechaNacimiento.isNotBlank()
+        val isTelefonoValid = telefono.isNotBlank() && telefono.length == 10 && telefono.all { it.isDigit() }
+        val isCorreoValid = correo.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()
+        val isPasswordValid = password.isNotBlank() && password.length >= 8
 
-            domicilio.isBlank() -> {
-                message = "El domicilio es obligatorio."
-                isError = true
-                false
-            }
+        isError = !(isNombreValid && isDomicilioValid && isSexoValid && isCurpValid && isFechaNacimientoValid &&
+                isTelefonoValid && isCorreoValid && isPasswordValid)
 
-            sexo.isBlank() -> {
-                message = "El sexo es obligatorio."
-                isError = true
-                false
-            }
-
-            curp.isBlank() -> {
-                message = "El CURP es obligatorio."
-                isError = true
-                false
-            }
-
-            curp.length != 18 -> { // CURP estándar tiene 18 caracteres
-                message = "El CURP debe tener 18 caracteres."
-                isError = true
-                false
-            }
-
-            fechaNacimiento.isBlank() -> {
-                message = "La fecha de nacimiento es obligatoria."
-                isError = true
-                false
-            }
-
-            telefono.isBlank() -> {
-                message = "El teléfono es obligatorio."
-                isError = true
-                false
-            }
-
-            password.isBlank() -> {
-                message = "La contraseña es obligatoria."
-                isError = true
-                false
-            }
-
-            correo.isBlank() -> {
-                message = "El correo es obligatorio."
-                isError = true
-                false
-            }
-
-            !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches() -> {
-                message = "El correo electrónico no es válido."
-                isError = true
-                false
-            }
-
-            else -> true
+        message = when {
+            !isNombreValid -> "El nombre es obligatorio."
+            !isDomicilioValid -> "El domicilio es obligatorio."
+            !isSexoValid -> "El sexo es obligatorio."
+            !isCurpValid -> "El CURP debe tener 18 caracteres."
+            !isFechaNacimientoValid -> "La fecha de nacimiento es obligatoria."
+            !isTelefonoValid -> "El teléfono debe tener 10 dígitos numéricos."
+            !isCorreoValid -> "El correo electrónico no es válido."
+            !isPasswordValid -> "La contraseña debe tener al menos 8 caracteres."
+            else -> ""
         }
+
+        return !isError
     }
 
-    // Función para guardar todos los datos en SharedPreferences
+        // Función para guardar todos los datos en SharedPreferences
     fun saveDataToSharedPreferences() {
         val sharedPreferences = context.getSharedPreferences("AfiliatePrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
@@ -418,7 +377,6 @@ fun AfiliateForm(navController: NavHostController) {
                     curp = curp,
                     fechaNacimiento = fechaNacimiento
                 )
-
                 if (response) {
                     saveDataToSharedPreferences()
                     "Usuario creado exitosamente"
@@ -443,7 +401,6 @@ fun AfiliateForm(navController: NavHostController) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Contenido con scroll
         val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
@@ -454,13 +411,12 @@ fun AfiliateForm(navController: NavHostController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campos de entrada (Nombre, Domicilio, etc.)
             OutlinedTextField(
                 value = nombre,
                 onValueChange = { nombre = it },
                 label = { Text("Nombre") },
                 modifier = Modifier.fillMaxWidth(),
-                isError = nombre.isBlank(),
+                isError = isError && nombre.isBlank(),
                 enabled = !isLoading
             )
 
@@ -471,7 +427,7 @@ fun AfiliateForm(navController: NavHostController) {
                 onValueChange = { domicilio = it },
                 label = { Text("Domicilio") },
                 modifier = Modifier.fillMaxWidth(),
-                isError = domicilio.isBlank(),
+                isError = isError && domicilio.isBlank(),
                 enabled = !isLoading
             )
 
@@ -486,7 +442,7 @@ fun AfiliateForm(navController: NavHostController) {
                 onValueChange = { curp = it },
                 label = { Text("CURP") },
                 modifier = Modifier.fillMaxWidth(),
-                isError = curp.isBlank() || curp.length != 18,
+                isError = isError && (curp.isBlank() || curp.length != 18),
                 enabled = !isLoading
             )
 
@@ -498,7 +454,6 @@ fun AfiliateForm(navController: NavHostController) {
                 enabled = !isLoading
             )
 
-
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
@@ -506,7 +461,7 @@ fun AfiliateForm(navController: NavHostController) {
                 onValueChange = { correo = it },
                 label = { Text("Correo") },
                 modifier = Modifier.fillMaxWidth(),
-                isError = correo.isBlank(),
+                isError = isError && (correo.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()),
                 enabled = !isLoading
             )
 
@@ -517,6 +472,7 @@ fun AfiliateForm(navController: NavHostController) {
                 onValueChange = { telefono = it },
                 label = { Text("Teléfono") },
                 modifier = Modifier.fillMaxWidth(),
+                isError = isError && (telefono.isBlank() || telefono.length != 10 || !telefono.all { it.isDigit() }),
                 enabled = !isLoading
             )
 
@@ -527,9 +483,19 @@ fun AfiliateForm(navController: NavHostController) {
                 onValueChange = { password = it },
                 label = { Text("Contraseña") },
                 modifier = Modifier.fillMaxWidth(),
+                isError = isError && (password.isBlank() || password.length < 8),
                 visualTransformation = PasswordVisualTransformation(),
                 enabled = !isLoading
             )
+
+            if (isError) {
+                Text(
+                    text = message,
+                    color = Color.Red,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
 
             // Fila para los botones
             Column(
@@ -574,7 +540,6 @@ fun AfiliateForm(navController: NavHostController) {
                     Text("Escanea tu INE")
                 }
             }
-
 
             // Spacer grande para permitir el scroll
             Spacer(modifier = Modifier.height(50.dp))
