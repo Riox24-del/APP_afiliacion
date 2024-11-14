@@ -819,7 +819,6 @@ fun PoliticaInformacionScreen(navController: NavHostController) {
     }
 }
 
-
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, apiService: ApiService) {
