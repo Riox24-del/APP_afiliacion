@@ -528,7 +528,7 @@ fun AfiliateForm(navController: NavHostController) {
                         Text("Enviar")
                     }
                 }
-
+//boton para abrir la camara
                 Button(
                     onClick = { navController.navigate("camera") },
                     modifier = Modifier.fillMaxWidth(),
@@ -560,6 +560,7 @@ fun AfiliateForm(navController: NavHostController) {
         }
     }
 }
+
 
     @Composable
 fun SexoSelector(

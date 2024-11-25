@@ -92,6 +92,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
+//los logs se pueden eliminar, solo se usaron para debug
 
 @Composable
 fun MainNavigation(userViewModel: UserViewModel, apiService: ApiService) {
