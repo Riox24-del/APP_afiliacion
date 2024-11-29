@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -50,15 +52,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
@@ -70,14 +77,21 @@ import java.util.Locale
 //animacion de inicio
 @Composable
 fun AnimatedSplashScreen() {
-    val descendingTextPosition by animateDpAsState(
-        targetValue = 50.dp,
-        animationSpec = tween(durationMillis = 4000, easing = LinearEasing)
+    // Estado de la animación
+    var startAnimation by remember { mutableStateOf(false) }
+    val topTextPosition by animateDpAsState(
+        targetValue = if (startAnimation) 0.dp else (-700).dp, // Desde arriba hacia el centro
+        animationSpec = tween(durationMillis = 6000, easing = LinearOutSlowInEasing)
     )
-    val ascendingTextPosition by animateDpAsState(
-        targetValue = (-50).dp,
-        animationSpec = tween(durationMillis = 4000, easing = LinearEasing)
+    val bottomTextPosition by animateDpAsState(
+        targetValue = if (startAnimation) 0.dp else 300.dp, // Desde abajo hacia el centro
+        animationSpec = tween(durationMillis = 6000, easing = LinearOutSlowInEasing)
     )
+    val alpha by animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0f,
+        animationSpec = tween(durationMillis = 1000, easing = LinearEasing)
+    )
+
     // Fondo degradado naranja
     val gradientBrush = Brush.verticalGradient(
         colors = listOf(
@@ -86,41 +100,42 @@ fun AnimatedSplashScreen() {
         )
     )
 
+    // Inicia la animación automáticamente
+    LaunchedEffect(Unit) {
+        startAnimation = true
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(gradientBrush),
+            .background(gradientBrush)
+            .graphicsLayer(alpha = alpha), // Aparecen progresivamente
         contentAlignment = Alignment.Center
     ) {
-        Box(
+        // Texto que se mueve desde arriba
+        Text(
+            text = "PLATAFORMA LATINOAMERICANA ECONÓMICA Y SOCIAL A. C.",
+            fontSize = 24.sp,
+            color = Color.White,
+            textAlign = TextAlign.Center,
             modifier = Modifier
-                .fillMaxSize()
-        ) {
-            Text(
-                text = "PLATAFORMA LATINOAMERICANA ECONÓMICA Y SOCIAL A. C.",
-                fontSize = 24.sp,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = descendingTextPosition)
-            )
+                .offset(y = topTextPosition)
+        )
 
-            Text(
-                text = "Aumentando sensiblemente el poder adquisitivo de las familias mexicanas",
-                fontSize = 16.sp,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset(y = ascendingTextPosition)
-            )
-        }
+        // Texto que se mueve desde abajo
+        Text(
+            text = "Aumentando sensiblemente el poder adquisitivo de las familias mexicanas",
+            fontSize = 16.sp,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .offset(y = bottomTextPosition)
+        )
     }
 }
 
 
-//funcion para analizar imagen CameraScreen
+//funcion para analizar imagen en la cameraScreen
 suspend fun analyzeImage(context: Context, uri: Uri): Map<String, String> {
     return try {
         val image = InputImage.fromFilePath(context, uri)
@@ -274,6 +289,7 @@ suspend fun analyzeImage(context: Context, uri: Uri): Map<String, String> {
 }
 
 
+//formulario de afiliacion
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AfiliateForm(navController: NavHostController) {

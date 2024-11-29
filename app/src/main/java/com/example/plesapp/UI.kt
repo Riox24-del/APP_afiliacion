@@ -85,7 +85,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.core.content.FileProvider
 import coil.compose.rememberImagePainter
 import java.io.File
@@ -177,16 +179,18 @@ fun Greeting(navController: NavHostController) {
     var showSplash by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(3000L)
+        kotlinx.coroutines.delay(4000L) // Tiempo sincronizado con las animaciones
         showSplash = false
         navController.navigate("inicio") {
             popUpTo("greeting") { inclusive = true }
         }
     }
+
     if (showSplash) {
         AnimatedSplashScreen()
     }
 }
+
 
 @RequiresApi(Build.VERSION_CODES.FROYO)
 @Composable
@@ -316,15 +320,17 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Imagen principal con el logo
+            // Imagen principal con bordes redondeados
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(240.dp)
+                    .padding(vertical = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .shadow(4.dp, RoundedCornerShape(16.dp))
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.inicio),
@@ -334,10 +340,12 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(1.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Título con color naranja
             Text(
                 text = "¡Síguenos en nuestras redes sociales!",
-                style = MaterialTheme.typography.bodyLarge.copy(
+                style = MaterialTheme.typography.titleLarge.copy(
                     color = Color(0xFFFFA726),
                     fontWeight = FontWeight.Bold
                 ),
@@ -345,82 +353,81 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Botones debajo de la imagen
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                OutlinedButton(
+            // Botones con diseño actualizado
+            Column {
+                ElevatedButton(
                     onClick = {
                         val intent =
                             Intent(Intent.ACTION_VIEW, Uri.parse("https://www.facebook.com/plesmx"))
                         context.startActivity(intent)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(1.dp, Color(0xFF2675AE)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFF2675AE)
-                    )
+                    colors = ButtonDefaults.elevatedButtonColors(
+                        containerColor = Color(0xFF26BAFF),
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Facebook")
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                OutlinedButton(
+                ElevatedButton(
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://plesmx.com/"))
                         context.startActivity(intent)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(1.dp, Color(0xFFFFA726)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFFFA726)
-                    )
+                    colors = ButtonDefaults.elevatedButtonColors(
+                        containerColor = Color(0xFFFFA726),
+                        contentColor = MaterialTheme.colorScheme.onSecondary
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(
-                        text = "Visita nuestra página web",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color(0xFFFFA726)
-                        ),
-                        textAlign = TextAlign.Center
-                    )
+                    Text("Visita nuestra página web")
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Text(
-                    text = "¿Ya estás afiliado?, Inicia Sesión",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        color = Color(0xFF000000),
-                       // fontWeight = FontWeight.Bold
+                    text = "¿Ya estás afiliado? Inicia Sesión",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center
                     ),
-                    textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 OutlinedButton(
-                    onClick = {
-                        navController.navigate("login")
-                    },
+                    onClick = { navController.navigate("login") },
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(1.dp, Color(0xFFFFA726)),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFFFFA726)), // Borde naranja
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFFFA726)
+                        contentColor = Color(0xFFFFA726) // Texto naranja
                     )
                 ) {
                     Text("Iniciar sesión")
                 }
+
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Información de contacto en la parte inferior
+            // Información de contacto
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Lunes a Viernes de 09:00 a 19:00, Sábado de 09:00 a 14:00",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.Gray
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onBackground
                     ),
                     textAlign = TextAlign.Center
                 )
@@ -429,8 +436,8 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
 
                 Text(
                     text = "Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax.",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.DarkGray
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurface
                     ),
                     textAlign = TextAlign.Center
                 )
@@ -439,15 +446,19 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
 
                 Text(
                     text = "Teléfono: 529511433017",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.DarkGray
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurface
                     ),
                     textAlign = TextAlign.Center
                 )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
+
+
 
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
