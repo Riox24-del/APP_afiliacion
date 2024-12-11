@@ -49,5 +49,5 @@ data class User(
 data class Product(
     val name: String,
     val description: String,
-    val image: String
+    val image: String = ""
 )

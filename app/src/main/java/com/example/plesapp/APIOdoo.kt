@@ -1,6 +1,9 @@
 package com.example.plesapp
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -11,7 +14,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
-
+import java.net.HttpURLConnection
+import java.net.URL
 
 
 @OptIn(kotlinx.serialization.InternalSerializationApi::class)
@@ -144,46 +148,60 @@ class ApiService(private val context: Context) {
     }
 
 //obtener productos habilitados
-        suspend fun getAvailableProducts(): List<Product>? {
-            authenticate()
-            val requestBuilder = Request.Builder()
-                .url(productsUrl)
-                .get()
-                .addHeader("login", usuario)
-                .addHeader("password", contrasena)
-                .addHeader("api-key", apiKey)
-                .addHeader("Content-Type", "application/json")
+suspend fun getAvailableProducts(): List<Product>? {
+    authenticate()
+    val requestBuilder = Request.Builder()
+        .url(productsUrl)
+        .get()
+        .addHeader("login", usuario)
+        .addHeader("password", contrasena)
+        .addHeader("api-key", apiKey)
+        .addHeader("Content-Type", "application/json")
 
-            return withContext(Dispatchers.IO) {
-                try {
-                    val response = clientAPI.newCall(requestBuilder.build()).execute()
-                    val responseBody = response.body?.string()
+    return withContext(Dispatchers.IO) {
+        try {
+            val response = clientAPI.newCall(requestBuilder.build()).execute()
+            val responseBody = response.body?.string()
 
-                    if (response.isSuccessful && responseBody != null) {
-                        val jsonArray = JSONArray(responseBody)
-                        val productList = mutableListOf<Product>()
+            Log.d("API Response", "Response body: $responseBody") // Debug del cuerpo de la respuesta
 
-                        for (i in 0 until jsonArray.length()) {
-                            val jsonProduct = jsonArray.getJSONObject(i)
-                            val product = Product(
-                                name = jsonProduct.getString("name"),
-                                description = jsonProduct.getString("description"),
-                                image = jsonProduct.getString("image")
-                            )
-                            productList.add(product)
+            if (response.isSuccessful && responseBody != null) {
+                val jsonArray = JSONArray(responseBody)
+                val productList = mutableListOf<Product>()
 
-                        }
-                        return@withContext productList
+                for (i in 0 until jsonArray.length()) {
+                    val jsonProduct = jsonArray.getJSONObject(i)
+
+                    val image = if (jsonProduct.has("image") && !jsonProduct.isNull("image")) {
+                        jsonProduct.getString("image")
                     } else {
-                        null
+                        "" // Imagen vacía si no está disponible
                     }
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                    null
+
+                    val product = Product(
+                        name = jsonProduct.getString("name"),
+                        description = jsonProduct.getString("description"),
+                        image = image
+                    )
+                    productList.add(product)
                 }
+                return@withContext productList
+            } else {
+                Log.e("API Error", "Response not successful: ${response.code}")
+                null
             }
+        } catch (e: IOException) {
+            Log.e("Network Error", "Error: ${e.message}")
+            null
         }
     }
+}
+
+
+
+
+
+}
 
 
 

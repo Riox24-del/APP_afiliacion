@@ -79,20 +79,32 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontStyle
 import android.util.Base64
+import android.widget.ImageView
 import androidx.activity.result.launch
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.content.FileProvider
+import coil.compose.rememberAsyncImagePainter
 import coil.compose.rememberImagePainter
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.time.LocalTime
 
 //los logs se pueden eliminar, solo se usaron para debug
 
@@ -310,7 +322,7 @@ fun LoginScreen(navController: NavHostController, userViewModel: UserViewModel) 
 }
 
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter", "NewApi")
 @Composable
 fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
     val context = LocalContext.current
@@ -355,7 +367,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Botones con diseño actualizado
+            // Botones con diseño
             Column {
                 ElevatedButton(
                     onClick = {
@@ -391,7 +403,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-
+/*
                 Text(
                     text = "¿Ya estás afiliado? Inicia Sesión",
                     style = MaterialTheme.typography.bodyMedium.copy(
@@ -407,13 +419,13 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                     onClick = { navController.navigate("login") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color(0xFFFFA726)), // Borde naranja
+                    border = BorderStroke(1.dp, Color(0xFFFFA726)),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFFFA726) // Texto naranja
+                        contentColor = Color(0xFFFFA726)
                     )
                 ) {
                     Text("Iniciar sesión")
-                }
+                }*/
 
             }
 
@@ -434,12 +446,18 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = "Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax.",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurface
+                ClickableText(
+                    text = AnnotatedString("Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax."),
+                    style = TextStyle(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
                     ),
-                    textAlign = TextAlign.Center
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        val mapsUrl = "https://www.google.com/maps/search/Privada+de+Prolongaci%C3%B3n+Eucaliptos+105,+68020+Oaxaca+de+Ju%C3%A1rez,+Mexico/@17.0965847,-96.7311947,14z/data=!3m1!4b1?hl=es&entry=ttu&g_ep=EgoyMDI0MTIwNC4wIKXMDSoASAFQAw%3D%3D"
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(mapsUrl))
+                        context.startActivity(intent)
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -451,15 +469,17 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                     ),
                     textAlign = TextAlign.Center
                 )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Mostrar "Abierto ahora" o "Cerrado ahora"
+                BusinessStatusText()
             }
 
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
-
-
-
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -764,6 +784,7 @@ fun CameraScreen(navController: NavHostController) {
     }
 }
 
+
 @Composable
 fun PoliticaInformacionScreen(navController: NavHostController) {
     val context = LocalContext.current
@@ -831,6 +852,7 @@ fun PoliticaInformacionScreen(navController: NavHostController) {
     }
 }
 
+//composable para los subsidios/productos
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, apiService: ApiService) {
@@ -855,7 +877,7 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
         } catch (e: Exception) {
             Log.e("Subsidios", "Error al obtener productos: ${e.message}")
         } finally {
-            isLoading = false // Finalizar el estado de carga
+            isLoading = false
         }
     }
 
@@ -874,9 +896,10 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
                 .padding(16.dp)
         ) {
             Text(
-                text = "Productos Disponibles",
+                text = "Tienda de Productos",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
 
             // Filtro de búsqueda
@@ -908,13 +931,14 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
                         fontStyle = FontStyle.Italic
                     )
                 } else {
-                    // Usar Column con scroll para listas grandes
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
+                    // Usar LazyVerticalGrid para diseño tipo tienda
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        filteredProducts.forEach { product ->
+                        itemsIndexed(filteredProducts) { index, product ->
                             ProductCard(
                                 product = product,
                                 onClick = {
@@ -922,9 +946,9 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
                                     showDetailsDialog = true
                                 }
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
+
                 }
             }
         }
@@ -951,7 +975,15 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
                                     .clip(RoundedCornerShape(8.dp))
                             )
                         } else {
-                            Log.e("Subsidios", "Error al decodificar la imagen para el producto en el diálogo: ${product.name}")
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .background(Color.Gray),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Imagen no disponible", color = Color.White)
+                            }
                         }
                     }
                 },
@@ -965,34 +997,25 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
     }
 }
 
-
+//tarjeta del producto
 @Composable
 fun ProductCard(product: Product, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFF9752)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .clickable { onClick() }
+            .padding(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(8.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = product.name,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = product.description,
-                color = Color.White
-            )
-
-            // Decodificar y mostrar la imagen
+            // Mostrar la imagen del producto
             val bitmap = decodeBase64ToBitmap(product.image)
             if (bitmap != null) {
                 Image(
@@ -1000,24 +1023,45 @@ fun ProductCard(product: Product, onClick: () -> Unit) {
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
-                        .padding(top = 8.dp)
+                        .height(120.dp)
                         .clip(RoundedCornerShape(8.dp))
                 )
             } else {
-                Log.e("Subsidios", "Error al decodificar la imagen para el producto: ${product.name}")
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .background(Color.Gray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Imagen no disponible", color = Color.White)
+                }
             }
+
+            // Mostrar el nombre del producto con maximo 8 caracteres
+            Text(
+                text = product.name.take(8) + if (product.name.length > 8) "..." else "",
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1, // Solo una línea
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Mostrar la descripción corta
+            Text(
+                text = product.description,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                color = Color.Gray,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
 
-// Función para decodificar la imagen de base64 a Bitmap
-private fun decodeBase64ToBitmap(base64: String): Bitmap? {
-    return try {
-        val decodedString = Base64.decode(base64, Base64.DEFAULT)
-        BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
-    } catch (e: Exception) {
-        Log.e("Subsidios", "Error al decodificar la imagen: ${e.message}")
-        null
-    }
-}
+
+

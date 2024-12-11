@@ -1,7 +1,10 @@
 package com.example.plesapp
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import android.util.Log
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -322,10 +325,11 @@ fun AfiliateForm(navController: NavHostController) {
         correo = sharedPreferences.getString("correo", "") ?: ""
         // Nota: No cargamos la contraseña por razones de seguridad
 
+        //log para depuracion
         Log.d("AfiliateForm", "Datos cargados: Nombre=$nombre, Domicilio=$domicilio, Sexo=$sexo, CURP=$curp, FechaNacimiento=$fechaNacimiento, Telefono=$telefono, Correo=$correo")
     }
 
-    // Llamar a la función para cargar los datos cuando la Composable se inicie
+    // Llamar a la función para cargar los datos cuando el Composable se inicie
     LaunchedEffect(Unit) {
         loadDataFromSharedPreferences()
     }
@@ -708,4 +712,56 @@ fun getCheckboxState(context: Context): Boolean {
 }
 
 
+//para actualizar el horario
+fun getBusinessStatus(): String {
+    val calendar = Calendar.getInstance()
+    val currentDay = calendar.get(Calendar.DAY_OF_WEEK)
+    val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
+    val currentMinute = calendar.get(Calendar.MINUTE)
 
+    // Convertir la hora actual a minutos desde la medianoche
+    val currentMinutes = currentHour * 60 + currentMinute
+
+    return when (currentDay) {
+        Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY -> {
+            val openingMinutes = 9 * 60 // 9:00 AM
+            val closingMinutes = 17 * 60 // 5:00 PM
+            if (currentMinutes in openingMinutes until closingMinutes) "Abierto ahora" else "Cerrado ahora"
+        }
+        Calendar.SATURDAY -> {
+            val openingMinutes = 9 * 60 // 9:00 AM
+            val closingMinutes = 14 * 60 // 2:00 PM
+            if (currentMinutes in openingMinutes until closingMinutes) "Abierto ahora" else "Cerrado ahora"
+        }
+        else -> {
+            "Cerrado ahora" // Domingo
+        }
+    }
+}
+
+//muestra el estado de abierto o cerrado
+@Composable
+fun BusinessStatusText() {
+    val status = getBusinessStatus()
+
+    Text(
+        text = status,
+        style = MaterialTheme.typography.bodyMedium.copy(
+            color = if (status == "Abierto ahora") Color(0xFF4CAF50) else Color(0xFFF44336),
+            textAlign = TextAlign.Center
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+// Función para decodificar la imagen de base64 a Bitmap
+fun decodeBase64ToBitmap(base64: String): Bitmap? {
+    return try {
+        val base64Cleaned = base64.substringAfter(",") // Elimina el prefijo MIME si está presente
+        val decodedBytes = Base64.decode(base64Cleaned, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+    } catch (e: IllegalArgumentException) {
+        Log.e("Base64Decode", "Error al decodificar Base64: ${e.message}")
+        null
+    }
+}
