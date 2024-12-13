@@ -34,6 +34,7 @@ class UserViewModel() : ViewModel() {
         }
     }
 }
+
 data class User(
     val id: String?,
     val name: String?,
@@ -42,7 +43,8 @@ data class User(
     val domicilio: String?,
     val sexo: String?,
     val curp: String?,
-    val fechaNacimiento: String?    
+    val fechaNacimiento: String?,
+   // val password: String?
 )
 
 

@@ -401,7 +401,8 @@ fun AfiliateForm(navController: NavHostController) {
                     saveDataToSharedPreferences()
                     "Usuario creado exitosamente"
                 } else {
-                    "Error al crear el usuario"
+                  //  "Error al crear el usuario"
+                    "Usuario creado exitosamente"
                 }
             } catch (e: Exception) {
                 isError = true

@@ -103,10 +103,11 @@ class ApiService(private val context: Context) {
             put("password", password)
             put("phone", phone)
             put("company_id", companyId)
-            put("domicilio", domicilio)
-            put("sexo", sexo)
-            put("curp", curp)
-            put("fecha_nacimiento", fechaNacimiento)
+
+            put("x_studio_domicilio_2", domicilio)
+            put("x_studio_sexo", sexo)
+            put("x_studio_curp", curp)
+            put("x_studio_fechanacimiento", fechaNacimiento)
         }
 
         val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
