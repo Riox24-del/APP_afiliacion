@@ -70,6 +70,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
@@ -81,20 +82,33 @@ import androidx.compose.ui.text.font.FontStyle
 import android.util.Base64
 import android.widget.ImageView
 import androidx.activity.result.launch
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -327,6 +341,21 @@ fun LoginScreen(navController: NavHostController, userViewModel: UserViewModel) 
 fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
     val context = LocalContext.current
 
+    // Estado para controlar el efecto de "shake" (teléfono)
+    val infiniteTransition = rememberInfiniteTransition()
+
+
+    // Estado para controlar el movimiento vertical (ubicación)
+    val verticalOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = ""
+    )
+
+
     Scaffold(
         bottomBar = { MyAppNavBar(navController) }
     ) {
@@ -436,39 +465,95 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "Lunes a Viernes de 09:00 a 19:00, Sábado de 09:00 a 14:00",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onBackground
-                    ),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                ClickableText(
-                    text = AnnotatedString("Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax."),
-                    style = TextStyle(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center
-                    ),
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = {
-                        val mapsUrl = "https://www.google.com/maps/search/Privada+de+Prolongaci%C3%B3n+Eucaliptos+105,+68020+Oaxaca+de+Ju%C3%A1rez,+Mexico/@17.0965847,-96.7311947,14z/data=!3m1!4b1?hl=es&entry=ttu&g_ep=EgoyMDI0MTIwNC4wIKXMDSoASAFQAw%3D%3D"
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(mapsUrl))
-                        context.startActivity(intent)
-                    }
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccessTime,
+                        contentDescription = "Horario",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Lunes a Viernes en un horario de 09:00 am a 19:00 pm, Sábado de 09:00 am a 14:00 pm",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onBackground
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+// Ícono de ubicación, texto de dirección y flecha
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = "Dirección",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .offset(y = verticalOffset.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val context = LocalContext.current // Obtener el contexto actual
 
-                Text(
-                    text = "Teléfono: 529511433017",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    textAlign = TextAlign.Center
-                )
+                    // Texto clicable para abrir Google Maps
+                    ClickableText(
+                        text = AnnotatedString("Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax."),
+                        style = TextStyle(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            openGoogleMaps(context)
+                        }
+                    )}
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Icono de flecha debajo del texto
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = "Abrir en Google Maps",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickable {
+                                openGoogleMaps(context)
+                            }
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = "Teléfono",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(20.dp)
+
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Teléfono: 529511433017",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
@@ -476,10 +561,27 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 BusinessStatusText()
             }
 
+
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+
+// Función para abrir Google Maps
+private fun openGoogleMaps(context: Context) {
+    val mapsUrl = "https://maps.app.goo.gl/Xp2j7CgP8nrnaCok6"
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(mapsUrl)).apply {
+        setPackage("com.google.android.apps.maps")
+    }
+
+    try {
+        context.startActivity(intent)
+    } catch (e: ActivityNotFoundException) {
+        // Si Google Maps no está instalado, abre en un navegador
+        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(mapsUrl))
+        context.startActivity(browserIntent)
+    }
 }
+
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -519,6 +621,9 @@ fun CameraScreen(navController: NavHostController) {
     var isLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    var isChecked by remember { mutableStateOf(getCheckboxState(context)) }
+   //var isChecked by remember { mutableStateOf(false) }
+    var hidePolicies by remember { mutableStateOf(false) }
 
     // Función para guardar los resultados en SharedPreferences
     fun saveDataToSharedPreferences(analysisResult: Map<String, String>) {
@@ -649,8 +754,9 @@ fun CameraScreen(navController: NavHostController) {
         // Botón para tomar una foto
         Button(
             onClick = { cameraLauncher.launch() },
+            enabled = isChecked, // Deshabilitar si el checkmark no está marcado
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFFFA726),
+                containerColor = if (isChecked) Color(0xFFFFA726) else Color.Gray,
                 contentColor = Color.White
             )
         ) {
@@ -662,8 +768,9 @@ fun CameraScreen(navController: NavHostController) {
         // Botón para abrir el selector de archivos y elegir una imagen
         Button(
             onClick = { launchImagePicker() },
+            enabled = isChecked, // Deshabilitar si el checkmark no está marcado
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFFFA726),
+                containerColor = if (isChecked) Color(0xFFFFA726) else Color.Gray,
                 contentColor = Color.White
             )
         ) {
@@ -680,15 +787,14 @@ fun CameraScreen(navController: NavHostController) {
             Image(
                 painter = rememberImagePainter(uri),
                 contentDescription = null,
-                contentScale = ContentScale.Fit, // Ajusta a ContentScale.Fit para mantener la relación de aspecto
+                contentScale = ContentScale.Fit,
                 modifier = Modifier
-                    .fillMaxWidth() // Llenar el ancho disponible
-                    .height(300.dp) // Establece una altura adecuada
+                    .fillMaxWidth()
+                    .height(300.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
             )
         }
-
 
         imageUri?.let { uri ->
             // Mostrar el botón de "Analizar Imagen" solo si ya se ha tomado o seleccionado una imagen
@@ -697,6 +803,7 @@ fun CameraScreen(navController: NavHostController) {
                     coroutineScope.launch {
                         try {
                             isLoading = true
+                            hidePolicies = true // Ocultar políticas y checkmark
                             analysisResult = analyzeImage(context, uri)
                             errorMessage = null
                         } catch (e: Exception) {
@@ -753,22 +860,36 @@ fun CameraScreen(navController: NavHostController) {
             ) {
                 Text("Mis datos son correctos")
             }
-            Text("Si sus datos son incorrectos, tome o cargue una nueva imagen")
-            Text("Si algunos de sus datos no son aparecieron, guarde y agreguelos manualmente")
+            Text("Si tus datos son incorrectos, toma o cargua una nueva imagen")
+            Text("También puedes agregarlos manualmente")
         }
 
+        // Checkmark y políticas de información
+        if (!hidePolicies) { // Mostrar solo si `hidePolicies` es falso
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = isChecked,
+                    onCheckedChange = {
+                        isChecked = it
+                        saveCheckboxState(context, it) // Guarda el estado al cambiar
+                    }
+                )
+                Text("He leído y acepto la política de información")
+            }
 
-        // Botón para leer la política de información
-        TextButton(
-            onClick = { navController.navigate("politicaInformacion") },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.textButtonColors(
-                contentColor = Color(0xFFFFA726) // Color del texto
-            )
-        ) {
-            Text("Leer Política de Información", style = MaterialTheme.typography.bodySmall) // Estilo más discreto
+            // Botón para leer la política de información
+            TextButton(
+                onClick = { navController.navigate("politicaInformacion") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = Color(0xFFFFA726)
+                )
+            ) {
+                Text("Leer Política de Información", style = MaterialTheme.typography.bodySmall)
+            }
         }
-
 
         Button(
             onClick = { navController.popBackStack() },
@@ -780,15 +901,14 @@ fun CameraScreen(navController: NavHostController) {
         ) {
             Text("Regresar")
         }
-
     }
 }
 
 
-@Composable
+    @Composable
 fun PoliticaInformacionScreen(navController: NavHostController) {
     val context = LocalContext.current
-    var isChecked by remember { mutableStateOf(getCheckboxState(context)) } // Recupera el estado al iniciar
+
 
     Column(
         modifier = Modifier
@@ -806,38 +926,6 @@ fun PoliticaInformacionScreen(navController: NavHostController) {
                     + "Asegúrate de leerlas detenidamente antes de continuar.",
             style = MaterialTheme.typography.bodyMedium
         )
-
-        // Checkmark
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = isChecked,
-                onCheckedChange = {
-                    isChecked = it
-                    saveCheckboxState(context, it) // Guarda el estado al cambiar
-                }
-            )
-            Text("He leído y acepto la política de información")
-        }
-
-        // Botón de confirmar
-        Button(
-            onClick = {
-                if (isChecked) {
-                    navController.popBackStack()
-                } else {
-                    Toast.makeText(context, "Debes aceptar la política de información", Toast.LENGTH_SHORT).show()
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFFFA726),
-                contentColor = Color.White
-            )
-        ) {
-            Text("Aceptar")
-        }
 
         Button(
             onClick = { navController.popBackStack() },
@@ -896,7 +984,7 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
                 .padding(16.dp)
         ) {
             Text(
-                text = "Tienda de Productos",
+                text = "Subsidios",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -963,7 +1051,7 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
                 text = {
                     Column {
                         Text(product.description)
-                        val bitmap = decodeBase64ToBitmap(product.image)
+                        val bitmap = decodeBase64ToBitmap(product.Imagen)
                         if (bitmap != null) {
                             Image(
                                 bitmap = bitmap.asImageBitmap(),
@@ -1016,7 +1104,7 @@ fun ProductCard(product: Product, onClick: () -> Unit) {
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Mostrar la imagen del producto
-            val bitmap = decodeBase64ToBitmap(product.image)
+            val bitmap = decodeBase64ToBitmap(product.Imagen)
             if (bitmap != null) {
                 Image(
                     bitmap = bitmap.asImageBitmap(),

@@ -82,15 +82,16 @@ class ApiService(private val context: Context) {
 
     //agregar un nuevo usuario
     suspend fun createPortalUser(
-        email: String,
+        email: String? = null,
         name: String,
-        password: String,
+        password: String? = null,
         phone: String,
         companyId: Int,
         domicilio: String,
         sexo: String,
         curp: String,
-        fechaNacimiento: String
+        fechaNacimiento: String,
+        tieneTarjetaFisica: Boolean,
     ): Boolean {
         authenticate()
         val url = registerUrl
@@ -98,9 +99,9 @@ class ApiService(private val context: Context) {
 
         // Crear el cuerpo de la petición JSON con los nuevos campos
         val jsonBody = JSONObject().apply {
-            put("email", email)
+            email?.let { put("email", it) }
+            password?.let { put("password", it) }
             put("name", name)
-            put("password", password)
             put("phone", phone)
             put("company_id", companyId)
 
@@ -108,6 +109,7 @@ class ApiService(private val context: Context) {
             put("x_studio_sexo", sexo)
             put("x_studio_curp", curp)
             put("x_studio_fechanacimiento", fechaNacimiento)
+            put("x_studio_tiene_tarjeta_fisica", tieneTarjetaFisica)
         }
 
         val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
@@ -182,7 +184,7 @@ suspend fun getAvailableProducts(): List<Product>? {
                     val product = Product(
                         name = jsonProduct.getString("name"),
                         description = jsonProduct.getString("description"),
-                        image = image
+                        Imagen = image
                     )
                     productList.add(product)
                 }

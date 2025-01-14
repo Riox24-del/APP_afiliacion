@@ -45,11 +45,12 @@ data class User(
     val curp: String?,
     val fechaNacimiento: String?,
    // val password: String?
+    val tieneTarjetaFisica: Boolean?
 )
 
 
 data class Product(
     val name: String,
     val description: String,
-    val image: String = ""
+    val Imagen: String = ""
 )

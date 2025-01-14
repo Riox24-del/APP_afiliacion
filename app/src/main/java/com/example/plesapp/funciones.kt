@@ -1,6 +1,8 @@
 package com.example.plesapp
 
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -25,6 +27,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -32,6 +35,7 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -57,10 +61,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role.Companion.Checkbox
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -305,13 +312,16 @@ fun AfiliateForm(navController: NavHostController) {
     var correo by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var tieneTarjetaFisica by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var showDetailsDialog by remember { mutableStateOf(false) }
-
+// Variable para mostrar el diálogo de políticas
+    var showPolicyDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val hasAcceptedPolicies = remember { mutableStateOf(false) }
 
     // Función para cargar los datos guardados en SharedPreferences
     fun loadDataFromSharedPreferences() {
@@ -326,7 +336,10 @@ fun AfiliateForm(navController: NavHostController) {
         // Nota: No cargamos la contraseña por razones de seguridad
 
         //log para depuracion
-        Log.d("AfiliateForm", "Datos cargados: Nombre=$nombre, Domicilio=$domicilio, Sexo=$sexo, CURP=$curp, FechaNacimiento=$fechaNacimiento, Telefono=$telefono, Correo=$correo")
+        Log.d(
+            "AfiliateForm",
+            "Datos cargados: Nombre=$nombre, Domicilio=$domicilio, Sexo=$sexo, CURP=$curp, FechaNacimiento=$fechaNacimiento, Telefono=$telefono, Correo=$correo"
+        )
     }
 
     // Llamar a la función para cargar los datos cuando el Composable se inicie
@@ -341,12 +354,15 @@ fun AfiliateForm(navController: NavHostController) {
         val isSexoValid = sexo.isNotBlank()
         val isCurpValid = curp.isNotBlank() && curp.length == 18
         val isFechaNacimientoValid = fechaNacimiento.isNotBlank()
-        val isTelefonoValid = telefono.isNotBlank() && telefono.length == 10 && telefono.all { it.isDigit() }
-        val isCorreoValid = correo.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()
+        val isTelefonoValid =
+            telefono.isNotBlank() && telefono.length == 10 && telefono.all { it.isDigit() }
+        val isCorreoValid =
+            correo.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()
         val isPasswordValid = password.isNotBlank() && password.length >= 8
 
-        isError = !(isNombreValid && isDomicilioValid && isSexoValid && isCurpValid && isFechaNacimientoValid &&
-                isTelefonoValid && isCorreoValid && isPasswordValid)
+        isError =
+            !(isNombreValid && isDomicilioValid && isSexoValid && isCurpValid && isFechaNacimientoValid &&
+                    isTelefonoValid && isCorreoValid && isPasswordValid)
 
         message = when {
             !isNombreValid -> "El nombre es obligatorio."
@@ -355,7 +371,7 @@ fun AfiliateForm(navController: NavHostController) {
             !isCurpValid -> "El CURP debe tener 18 caracteres."
             !isFechaNacimientoValid -> "La fecha de nacimiento es obligatoria."
             !isTelefonoValid -> "El teléfono debe tener 10 dígitos numéricos."
-            !isCorreoValid -> "El correo electrónico no es válido."
+            //  !isCorreoValid -> "El correo electrónico no es válido."
             !isPasswordValid -> "La contraseña debe tener al menos 8 caracteres."
             else -> ""
         }
@@ -363,7 +379,7 @@ fun AfiliateForm(navController: NavHostController) {
         return !isError
     }
 
-        // Función para guardar todos los datos en SharedPreferences
+    // Función para guardar todos los datos en SharedPreferences
     fun saveDataToSharedPreferences() {
         val sharedPreferences = context.getSharedPreferences("AfiliatePrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
@@ -387,21 +403,22 @@ fun AfiliateForm(navController: NavHostController) {
             val apiService = ApiService(context)
             val responseMessage = try {
                 val response = apiService.createPortalUser(
-                    email = correo,
+                    email = correo.ifBlank { null },
                     name = nombre,
-                    password = password,
+                    password = password.ifBlank { null },
                     phone = telefono,
                     companyId = 1,
                     domicilio = domicilio,
                     sexo = sexo,
                     curp = curp,
-                    fechaNacimiento = fechaNacimiento
+                    fechaNacimiento = fechaNacimiento,
+                    tieneTarjetaFisica = tieneTarjetaFisica
                 )
                 if (response) {
                     saveDataToSharedPreferences()
                     "Usuario creado exitosamente"
                 } else {
-                  //  "Error al crear el usuario"
+                    //  "Error al crear el usuario"
                     "Usuario creado exitosamente"
                 }
             } catch (e: Exception) {
@@ -416,7 +433,7 @@ fun AfiliateForm(navController: NavHostController) {
         }
     }
 
-    // UI del formulario
+// UI del formulario
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -480,9 +497,8 @@ fun AfiliateForm(navController: NavHostController) {
             OutlinedTextField(
                 value = correo,
                 onValueChange = { correo = it },
-                label = { Text("Correo") },
+                label = { Text("Correo (opcional)") },
                 modifier = Modifier.fillMaxWidth(),
-                isError = isError && (correo.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()),
                 enabled = !isLoading
             )
 
@@ -502,13 +518,25 @@ fun AfiliateForm(navController: NavHostController) {
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Contraseña") },
+                label = { Text("Contraseña (opcional)") },
                 modifier = Modifier.fillMaxWidth(),
-                isError = isError && (password.isBlank() || password.length < 8),
                 visualTransformation = PasswordVisualTransformation(),
                 enabled = !isLoading
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = tieneTarjetaFisica,
+                    onCheckedChange = { tieneTarjetaFisica = it }
+                )
+                Text("¿Tiene tarjeta física?")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
             if (isError) {
                 Text(
                     text = message,
@@ -549,7 +577,8 @@ fun AfiliateForm(navController: NavHostController) {
                         Text("Enviar")
                     }
                 }
-//boton para abrir la camara
+
+                // Botón para abrir la cámara
                 Button(
                     onClick = { navController.navigate("camera") },
                     modifier = Modifier.fillMaxWidth(),
@@ -562,7 +591,6 @@ fun AfiliateForm(navController: NavHostController) {
                 }
             }
 
-            // Spacer grande para permitir el scroll
             Spacer(modifier = Modifier.height(50.dp))
 
             // Diálogo de mensaje
@@ -766,3 +794,5 @@ fun decodeBase64ToBitmap(base64: String): Bitmap? {
         null
     }
 }
+
+
