@@ -1,6 +1,8 @@
 package com.example.plesapp
 
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -8,49 +10,74 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 
-class UserViewModel() : ViewModel() {
+class UserViewModel : ViewModel() {
     private val _userState = MutableStateFlow<User?>(null)
     val userState: StateFlow<User?> = _userState.asStateFlow()
 
     private val _token = MutableStateFlow<String?>(null)
     val token: StateFlow<String?> = _token.asStateFlow()
 
-    fun getIdPartnert(): String? {
-        return userState.value?.id
-    }
+    private val _productList = MutableStateFlow<List<Product>>(emptyList())
+    val productList: StateFlow<List<Product>> = _productList.asStateFlow()
+
+    fun getIdPartnert(): String? = userState.value?.id
 
     fun logout() {
         viewModelScope.launch {
             _userState.value = null
-
+            _token.value = null
         }
     }
 
-
-
-    fun setUser(user: User) {
+    fun setUser(user: User?) {
         viewModelScope.launch {
-            _userState.emit(user)
+            if (user != null) {
+                _userState.emit(user)
+            } else {
+                _userState.emit(null)
+            }
         }
     }
+
+    fun setToken(newToken: String?) {
+        viewModelScope.launch {
+            _token.emit(newToken)
+        }
+    }
+
+    fun setProducts(products: List<Product>) {
+        viewModelScope.launch {
+            _productList.emit(products)
+        }
+    }
+
+    // Métodos auxiliares
+    fun getUserName(): String? = userState.value?.name
+    fun getUserEmail(): String? = userState.value?.email
+    fun isUserLoggedIn(): Boolean = userState.value != null
+
+
+
+    data class User(
+        val id: String? = null,
+        val name: String? = null,
+        val email: String? = null,
+        val phone: String? = null,
+        val domicilio: String? = null,
+        val sexo: String? = null,
+        val curp: String? = null,
+        val fechaNacimiento: String? = null,
+        val tieneTarjetaFisica: Boolean? = null
+    )
+
+
+    data class Product(
+        val name: String,
+        val description: String,
+        val Imagen: String = ""
+    )
 }
 
-data class User(
-    val id: String?,
-    val name: String?,
-    val email: String?,
-    val phone: String?,
-    val domicilio: String?,
-    val sexo: String?,
-    val curp: String?,
-    val fechaNacimiento: String?,
-   // val password: String?
-    val tieneTarjetaFisica: Boolean?
-)
 
 
-data class Product(
-    val name: String,
-    val description: String,
-    val Imagen: String = ""
-)
+

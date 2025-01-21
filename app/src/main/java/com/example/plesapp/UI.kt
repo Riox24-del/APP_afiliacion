@@ -120,7 +120,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.time.LocalTime
 
-//los logs se pueden eliminar, solo se usaron para debug
+//NOTA:los logs se pueden eliminar, solo se usaron para debug
 
 @Composable
 fun MainNavigation(userViewModel: UserViewModel, apiService: ApiService) {
@@ -145,17 +145,29 @@ fun MyApp(navController: NavHostController, userViewModel: UserViewModel) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val apiService = remember { ApiService(context) }
-    val responseText by remember { mutableStateOf("Response will be shown here") }
-    val isLoading by remember { mutableStateOf(false) }
-    var apiPartnersResponse by remember { mutableStateOf<ApiResponsePartners?>(null) }
+    var responseText by remember { mutableStateOf("Response will be shown here") }
+    var isLoading by remember { mutableStateOf(false) }
+   // var apiPartnersResponse by remember { mutableStateOf<ApiResponsePartners?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         bottomBar = { MyAppNavBar(navController) }
-    ) {
-
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator()
+            } else {
+                Text(text = responseText, style = MaterialTheme.typography.bodyLarge)
+            }
+        }
     }
 }
+
 
 @Composable
 fun MyAppNavBar(navController: NavHostController) {
@@ -940,7 +952,6 @@ fun PoliticaInformacionScreen(navController: NavHostController) {
     }
 }
 
-//composable para los subsidios/productos
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, apiService: ApiService) {
@@ -952,15 +963,16 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
     val products = remember { mutableStateOf(emptyList<Product>()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // Llamada para obtener los productos disponibles al iniciar la pantalla
+    // Llamada para obtener los productos al iniciar la pantalla
     LaunchedEffect(Unit) {
         try {
-            val availableProducts = apiService.getAvailableProducts()
-            Log.d("Subsidios", "Available Products: $availableProducts")
-            if (availableProducts != null) {
-                products.value = availableProducts
+            // Obtener todos los productos, sin filtrar por disponibilidad
+            val allProducts = apiService.getAllProducts()
+            Log.d("Subsidios", "All Products: $allProducts")
+            if (allProducts != null) {
+                products.value = allProducts
             } else {
-                Log.e("Subsidios", "No se encontraron productos disponibles")
+                Log.e("Subsidios", "No se encontraron productos.")
             }
         } catch (e: Exception) {
             Log.e("Subsidios", "Error al obtener productos: ${e.message}")
@@ -1036,7 +1048,6 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
                             )
                         }
                     }
-
                 }
             }
         }
@@ -1084,6 +1095,8 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
         }
     }
 }
+
+
 
 //tarjeta del producto
 @Composable

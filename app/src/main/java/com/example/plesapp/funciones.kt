@@ -403,9 +403,9 @@ fun AfiliateForm(navController: NavHostController) {
             val apiService = ApiService(context)
             val responseMessage = try {
                 val response = apiService.createPortalUser(
-                    email = correo.ifBlank { null },
+                    email = correo.ifBlank { null }.toString(),
                     name = nombre,
-                    password = password.ifBlank { null },
+                    password = password.ifBlank { null }.toString(),
                     phone = telefono,
                     companyId = 1,
                     domicilio = domicilio,

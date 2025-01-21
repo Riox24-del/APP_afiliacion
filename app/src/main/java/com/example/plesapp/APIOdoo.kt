@@ -1,5 +1,6 @@
 package com.example.plesapp
 
+import android.R.attr.apiKey
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -7,9 +8,11 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,191 +23,168 @@ import java.net.URL
 
 @OptIn(kotlinx.serialization.InternalSerializationApi::class)
 @Serializable
-data class RecordPartner(
-    val id: Int,
-    val name: String?,
-    val email: String?,
-    val phone: String?,
+data class Product(
+    val name: String,
+    val description: String,
+    val Imagen: String
 )
-
 
 @OptIn(kotlinx.serialization.InternalSerializationApi::class)
 @Serializable
-data class ApiResponsePartners(
-    val partners: List<RecordPartner>
+data class ApiResponseProducts(
+    val products: List<Product>
 )
 
 
 class ApiService(private val context: Context) {
     private val clientAPI = OkHttpClient()
-    private val apiKey: String = "500845c5-dc6d-49ca-b394-eeae21b75409"
-    private val usuario: String = "admin"
-    private val contrasena: String = "admin"
-    private val authUrl = "https://pruebas.stples.mx/odoo_connect"
-    private val registerUrl = "https://pruebas.stples.mx/api/create_portal_user"
-    private val host = "pruebas.stples.mx"
-    private val productsUrl = "https://pruebas.stples.mx/products/available"
+    private val apiKey = "6f132e9b7b1f769b63908700291ae6d657c94488"
+    private val authUrl = "https://plesmx.com/web/session/authenticate"
+    private val registerUrl = "https://plesmx.com/api/create_portal_user"
+    private val productsUrl = "https://plesmx.com/products/available"
+    private val database = "ples"
+    private val email = "administrador@plesmx.com"
+    private val password = "admin"
 
-    //funcion para autenticar y conectarse a la bd de afiliacion
+    // Función para autenticar
     suspend fun authenticate(): String {
+        val json = """
+            {
+                "jsonrpc": "2.0",
+                "method": "call",
+                "params": {
+                    "db": "$database",
+                    "login": "$email",
+                    "password": "$password"
+                }
+            }
+        """.trimIndent()
+
         val authRequest = Request.Builder()
             .url(authUrl)
-            .addHeader("db", "afiliacion")
-            .addHeader("login", usuario)
-            .addHeader("password", contrasena)
+            .post(json.toRequestBody("application/json".toMediaType()))
             .build()
 
         return withContext(Dispatchers.IO) {
             try {
-                val authResponse = clientAPI.newCall(authRequest).execute()
-                if (authResponse.isSuccessful) {
-                    val cookies = authResponse.headers("Set-Cookie")
-                    for (cookie in cookies) {
-                        if (cookie.startsWith("session_id")) {
-                            val endIndex = cookie.indexOf(";")
-                            val sessionCookie = if (endIndex != -1) {
-                                "session_id=" + cookie.substringAfter("session_id=").substringBefore(";")
-                            } else {
-                                "session_id=" + cookie.substringAfter("session_id=")
-                            }
-                            break
-                        }
-                    }
-                    "Authentication successful"
-                } else {
-                    "Authentication failed: ${authResponse.code}"
-                }
-            } catch (e: IOException) {
-                "Authentication request failed: ${e.message}"
-            }
-        }
-    }
-
-    //agregar un nuevo usuario
-    suspend fun createPortalUser(
-        email: String? = null,
-        name: String,
-        password: String? = null,
-        phone: String,
-        companyId: Int,
-        domicilio: String,
-        sexo: String,
-        curp: String,
-        fechaNacimiento: String,
-        tieneTarjetaFisica: Boolean,
-    ): Boolean {
-        authenticate()
-        val url = registerUrl
-        println("Using Register URL: $url")
-
-        // Crear el cuerpo de la petición JSON con los nuevos campos
-        val jsonBody = JSONObject().apply {
-            email?.let { put("email", it) }
-            password?.let { put("password", it) }
-            put("name", name)
-            put("phone", phone)
-            put("company_id", companyId)
-
-            put("x_studio_domicilio_2", domicilio)
-            put("x_studio_sexo", sexo)
-            put("x_studio_curp", curp)
-            put("x_studio_fechanacimiento", fechaNacimiento)
-            put("x_studio_tiene_tarjeta_fisica", tieneTarjetaFisica)
-        }
-
-        val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
-
-        println("Headers: login=$usuario, password=$contrasena, api-key=$apiKey, database=afiliacion")
-
-        // Crear la petición
-        val requestBuilder = Request.Builder()
-            .url(url)
-            .post(requestBody)
-            .addHeader("login", usuario)
-            .addHeader("password", contrasena)
-            .addHeader("api-key", apiKey)
-            .addHeader("database", "afiliacion")
-            .addHeader("Content-Type", "application/json")
-
-        // Ejecutar la petición dentro de un contexto de IO
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = clientAPI.newCall(requestBuilder.build()).execute()
-                val responseBody = response.body?.string()
-
-                println("Response code: ${response.code}")
-                println("Response body: $responseBody")
-
+                val response = clientAPI.newCall(authRequest).execute()
                 if (response.isSuccessful) {
-                    responseBody?.contains("User created successfully") == true
+                    val responseBody = response.body?.string() ?: ""
+                    val sessionId = JSONObject(responseBody)
+                        .getJSONObject("result")
+                        .getString("session_id")
+                    sessionId
                 } else {
-                    println("Request failed with error code: ${response.code}")
-                    println("Error Response: $responseBody")
-                    false
+                    throw Exception("Error de autenticación: ${response.code}")
                 }
             } catch (e: IOException) {
-                println("Request failed: ${e.message}")
-                e.printStackTrace()
-                false
+                throw Exception("Error de red: ${e.message}")
             }
         }
     }
 
-//obtener productos habilitados
-suspend fun getAvailableProducts(): List<Product>? {
-    authenticate()
-    val requestBuilder = Request.Builder()
-        .url(productsUrl)
-        .get()
-        .addHeader("login", usuario)
-        .addHeader("password", contrasena)
-        .addHeader("api-key", apiKey)
-        .addHeader("Content-Type", "application/json")
+// Crear un usuario en el portal
+suspend fun createPortalUser(
+    email: String,
+    name: String,
+    password: String,
+    phone: String,
+    companyId: Int,
+    domicilio: String,
+    sexo: String,
+    curp: String,
+    fechaNacimiento: String,
+    tieneTarjetaFisica: Boolean,
+): Boolean {
+    val sessionId = authenticate()
+    val jsonBody = JSONObject().apply {
+        put("email", email)
+        put("password", password)
+        put("name", name)
+        put("phone", phone)
+        put("company_id", companyId)
+        put("x_studio_domicilio_2", domicilio)
+        put("x_studio_sexo", sexo)
+        put("x_studio_curp", curp)
+        put("x_studio_fechanacimiento", fechaNacimiento)
+        put("x_studio_tiene_tarjeta_fisica", tieneTarjetaFisica)
+    }
+
+    val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
+
+    val request = Request.Builder()
+        .url(registerUrl)
+        .post(requestBody)
+        .addHeader("Authorization", "Bearer $apiKey")
+        .addHeader("session_id", sessionId)
+        .build()
 
     return withContext(Dispatchers.IO) {
         try {
-            val response = clientAPI.newCall(requestBuilder.build()).execute()
-            val responseBody = response.body?.string()
-
-            Log.d("API Response", "Response body: $responseBody") // Debug del cuerpo de la respuesta
-
-            if (response.isSuccessful && responseBody != null) {
-                val jsonArray = JSONArray(responseBody)
-                val productList = mutableListOf<Product>()
-
-                for (i in 0 until jsonArray.length()) {
-                    val jsonProduct = jsonArray.getJSONObject(i)
-
-                    val image = if (jsonProduct.has("image") && !jsonProduct.isNull("image")) {
-                        jsonProduct.getString("image")
-                    } else {
-                        "" // Imagen vacía si no está disponible
-                    }
-
-                    val product = Product(
-                        name = jsonProduct.getString("name"),
-                        description = jsonProduct.getString("description"),
-                        Imagen = image
-                    )
-                    productList.add(product)
-                }
-                return@withContext productList
-            } else {
-                Log.e("API Error", "Response not successful: ${response.code}")
-                null
-            }
+            val response = clientAPI.newCall(request).execute()
+            response.isSuccessful
         } catch (e: IOException) {
-            Log.e("Network Error", "Error: ${e.message}")
-            null
+            println("Error al crear usuario: ${e.message}")
+            false
         }
     }
 }
 
+    // Obtener todos los productos habilitados (sin filtro de disponibilidad)
+    suspend fun getAllProducts(): List<Product>? {
+        val sessionId = authenticate()  // Obtener el session_id
+        val request = Request.Builder()
+            .url(productsUrl)  // URL de la API que devuelve todos los productos
+            .get()
+            .addHeader("Authorization", "Bearer $apiKey")  // Autorización con la clave API
+            .addHeader("session_id", sessionId)  // Enviar session_id
+            .build()
 
+        return withContext(Dispatchers.IO) {
+            try {
+                // Realizar la solicitud
+                val response = clientAPI.newCall(request).execute()
 
+                // Verificar si la respuesta es exitosa
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string() ?: return@withContext null
+                    val productsJsonArray = JSONArray(responseBody)
+                    val productList = mutableListOf<Product>()
 
+                    // Procesar cada producto en la respuesta JSON
+                    for (i in 0 until productsJsonArray.length()) {
+                        val productJson = productsJsonArray.getJSONObject(i)
+                        val product = Product(
+                            name = productJson.getString("name"),
+                            description = productJson.getString("description"),
+                            Imagen = productJson.optString("image", "") // Si no hay imagen, devolver cadena vacía
+                        )
+                        productList.add(product)
+                    }
+
+                    productList // Devolver la lista completa de productos
+                } else {
+                    // En caso de error en la respuesta
+                    println("Error: ${response.code} - ${response.message}")
+                    null
+                }
+            } catch (e: IOException) {
+                // Manejo de excepciones en la llamada de red
+                println("Error al obtener productos: ${e.message}")
+                null
+            } catch (e: Exception) {
+                // Capturar otros errores generales
+                println("Error inesperado: ${e.message}")
+                null
+            }
+        }
+    }
 
 }
+
+
+
+
 
 
 
