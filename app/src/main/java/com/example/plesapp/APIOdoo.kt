@@ -17,8 +17,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
+import okhttp3.*
 
 
 @OptIn(kotlinx.serialization.InternalSerializationApi::class)
@@ -35,19 +34,24 @@ data class ApiResponseProducts(
     val products: List<Product>
 )
 
-
 class ApiService(private val context: Context) {
     private val clientAPI = OkHttpClient()
-    private val apiKey = "6f132e9b7b1f769b63908700291ae6d657c94488"
-    private val authUrl = "https://plesmx.com/web/session/authenticate"
-    private val registerUrl = "https://plesmx.com/api/create_portal_user"
-    private val productsUrl = "https://plesmx.com/products/available"
-    private val database = "ples"
-    private val email = "administrador@plesmx.com"
-    private val password = "admin"
+    private val apiKey = "d603725815bef5701e3769f95e2402d2d7412715"
+    private val baseUrl = "https://artesanias.stples.mx"
+    private val authUrl = "$baseUrl/web/session/authenticate"
+    private val registerUrl = "$baseUrl/api/create_portal_user"
+    private val productsUrl = "$baseUrl/api/products"
+    private val database = "Pruebas"
+    private val email = "admin"
+    private val password = "1234"
+
+    // Variable para almacenar el session_id
+    private var sessionId: String? = null
 
     // Función para autenticar
     suspend fun authenticate(): String {
+        if (sessionId != null) return sessionId!!  // Si ya tenemos un session_id válido, lo usamos.
+
         val json = """
             {
                 "jsonrpc": "2.0",
@@ -70,10 +74,10 @@ class ApiService(private val context: Context) {
                 val response = clientAPI.newCall(authRequest).execute()
                 if (response.isSuccessful) {
                     val responseBody = response.body?.string() ?: ""
-                    val sessionId = JSONObject(responseBody)
+                    sessionId = JSONObject(responseBody)
                         .getJSONObject("result")
                         .getString("session_id")
-                    sessionId
+                    sessionId!!
                 } else {
                     throw Exception("Error de autenticación: ${response.code}")
                 }
@@ -83,52 +87,70 @@ class ApiService(private val context: Context) {
         }
     }
 
-// Crear un usuario en el portal
-suspend fun createPortalUser(
-    email: String,
-    name: String,
-    password: String,
-    phone: String,
-    companyId: Int,
-    domicilio: String,
-    sexo: String,
-    curp: String,
-    fechaNacimiento: String,
-    tieneTarjetaFisica: Boolean,
-): Boolean {
-    val sessionId = authenticate()
-    val jsonBody = JSONObject().apply {
-        put("email", email)
-        put("password", password)
-        put("name", name)
-        put("phone", phone)
-        put("company_id", companyId)
-        put("x_studio_domicilio_2", domicilio)
-        put("x_studio_sexo", sexo)
-        put("x_studio_curp", curp)
-        put("x_studio_fechanacimiento", fechaNacimiento)
-        put("x_studio_tiene_tarjeta_fisica", tieneTarjetaFisica)
-    }
+    // Función genérica para realizar solicitudes con autenticación
+    suspend fun requestWithAuthentication(request: Request): Response? {
+        val sessionId = authenticate()  // Obtener o reutilizar el session_id
+        val requestWithSession = request.newBuilder()
+            .addHeader("Authorization", "Bearer $apiKey")
+            .addHeader("session_id", sessionId)
+            .build()
 
-    val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
-
-    val request = Request.Builder()
-        .url(registerUrl)
-        .post(requestBody)
-        .addHeader("Authorization", "Bearer $apiKey")
-        .addHeader("session_id", sessionId)
-        .build()
-
-    return withContext(Dispatchers.IO) {
-        try {
-            val response = clientAPI.newCall(request).execute()
-            response.isSuccessful
-        } catch (e: IOException) {
-            println("Error al crear usuario: ${e.message}")
-            false
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = clientAPI.newCall(requestWithSession).execute()
+                response.takeIf { it.isSuccessful }
+            } catch (e: IOException) {
+                println("Error en la solicitud: ${e.message}")
+                null
+            }
         }
     }
-}
+
+    // Crear un usuario en el portal
+    suspend fun createPortalUser(
+        email: String,
+        name: String,
+        password: String,
+        phone: String,
+        companyId: Int,
+        domicilio: String,
+        sexo: String,
+        curp: String,
+        fechaNacimiento: String,
+        tieneTarjetaFisica: Boolean
+    ): Boolean {
+        val jsonBody = JSONObject().apply {
+            put("email", email)
+            put("password", password)
+            put("name", name)
+            put("phone", phone)
+            put("company_id", companyId)
+            put("x_studio_domicilio_2", domicilio)
+            put("x_studio_sexo", sexo)
+            put("x_studio_curp", curp)
+            put("x_studio_fechanacimiento", fechaNacimiento)
+            put("x_studio_tiene_tarjeta_fisica", tieneTarjetaFisica)
+        }
+
+        val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
+
+        val request = Request.Builder()
+            .url(registerUrl)
+            .post(requestBody)
+            .addHeader("Authorization", "Bearer $apiKey")
+            .addHeader("session_id", authenticate())  // Usar session_id
+            .build()
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = clientAPI.newCall(request).execute()
+                response.isSuccessful
+            } catch (e: IOException) {
+                println("Error al crear usuario: ${e.message}")
+                false
+            }
+        }
+    }
 
     // Obtener todos los productos habilitados (sin filtro de disponibilidad)
     suspend fun getAllProducts(): List<Product>? {
@@ -148,6 +170,10 @@ suspend fun createPortalUser(
                 // Verificar si la respuesta es exitosa
                 if (response.isSuccessful) {
                     val responseBody = response.body?.string() ?: return@withContext null
+
+                    // Imprimir el cuerpo de la respuesta para depuración
+                    println("Respuesta de la API de productos: $responseBody")
+
                     val productsJsonArray = JSONArray(responseBody)
                     val productList = mutableListOf<Product>()
 
@@ -157,7 +183,10 @@ suspend fun createPortalUser(
                         val product = Product(
                             name = productJson.getString("name"),
                             description = productJson.getString("description"),
-                            Imagen = productJson.optString("image", "") // Si no hay imagen, devolver cadena vacía
+                            Imagen = productJson.optString(
+                                "image",
+                                ""
+                            ) // Si no hay imagen, devolver cadena vacía
                         )
                         productList.add(product)
                     }
@@ -178,9 +207,8 @@ suspend fun createPortalUser(
                 null
             }
         }
-    }
+    }}
 
-}
 
 
 
