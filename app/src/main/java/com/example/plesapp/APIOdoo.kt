@@ -106,7 +106,6 @@ class ApiService(private val context: Context) {
         if (sessionId.isNullOrBlank()) {
             throw Exception("Error: session_id está vacío o no disponible.")
         }
-
         val jsonBody = JSONObject().apply {
             put("name", name)
             put("email", email)
