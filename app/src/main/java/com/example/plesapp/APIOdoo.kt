@@ -37,31 +37,30 @@ data class ApiResponseProducts(
 class ApiService(private val context: Context) {
     private val clientAPI = OkHttpClient()
     private val apiKey = "d603725815bef5701e3769f95e2402d2d7412715"
-    private val baseUrl = "https://artesanias.stples.mx"
+    private val baseUrl = "https://plesmx.com"
     private val authUrl = "$baseUrl/web/session/authenticate"
-    private val registerUrl = "$baseUrl/api/create_portal_user"
+    private val registerUrl = "$baseUrl/api/create_contact"
     private val productsUrl = "$baseUrl/api/products"
-    private val database = "Pruebas"
-    private val email = "admin"
-    private val password = "1234"
+    private val database = "ples"
+    private val email = "administrador@plesmx.com"
+    private val password = "admin"
 
-    // Variable para almacenar el session_id
     private var sessionId: String? = null
 
-    // Función para autenticar
+    // Método para autenticar al usuario y obtener el session_id
     suspend fun authenticate(): String {
-        if (sessionId != null) return sessionId!!  // Si ya tenemos un session_id válido, lo usamos.
+        if (sessionId != null) return sessionId!! // Usamos un session_id existente si es válido.
 
         val json = """
-            {
-                "jsonrpc": "2.0",
-                "method": "call",
-                "params": {
-                    "db": "$database",
-                    "login": "$email",
-                    "password": "$password"
-                }
+        {
+            "jsonrpc": "2.0",
+            "method": "call",
+            "params": {
+                "db": "$database",
+                "login": "$email",
+                "password": "$password"
             }
+        }
         """.trimIndent()
 
         val authRequest = Request.Builder()
@@ -72,12 +71,17 @@ class ApiService(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 val response = clientAPI.newCall(authRequest).execute()
+                val responseBody = response.body?.string() ?: ""
+                Log.d("ApiService", "Respuesta de autenticación: $responseBody")
+
                 if (response.isSuccessful) {
-                    val responseBody = response.body?.string() ?: ""
-                    sessionId = JSONObject(responseBody)
-                        .getJSONObject("result")
-                        .getString("session_id")
-                    sessionId!!
+                    val jsonResponse = JSONObject(responseBody)
+                    if (jsonResponse.has("result") && jsonResponse.getJSONObject("result").has("session_id")) {
+                        sessionId = jsonResponse.getJSONObject("result").getString("session_id")
+                        sessionId!!
+                    } else {
+                        throw Exception("Error: no se encontró session_id en la respuesta.")
+                    }
                 } else {
                     throw Exception("Error de autenticación: ${response.code}")
                 }
@@ -87,49 +91,30 @@ class ApiService(private val context: Context) {
         }
     }
 
-    // Función genérica para realizar solicitudes con autenticación
-    suspend fun requestWithAuthentication(request: Request): Response? {
-        val sessionId = authenticate()  // Obtener o reutilizar el session_id
-        val requestWithSession = request.newBuilder()
-            .addHeader("Authorization", "Bearer $apiKey")
-            .addHeader("session_id", sessionId)
-            .build()
-
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = clientAPI.newCall(requestWithSession).execute()
-                response.takeIf { it.isSuccessful }
-            } catch (e: IOException) {
-                println("Error en la solicitud: ${e.message}")
-                null
-            }
-        }
-    }
-
-    // Crear un usuario en el portal
     suspend fun createPortalUser(
-        email: String,
         name: String,
-        password: String,
+        email: String,
         phone: String,
-        companyId: Int,
-        domicilio: String,
         sexo: String,
         curp: String,
         fechaNacimiento: String,
         tieneTarjetaFisica: Boolean
     ): Boolean {
+        // Usamos el session_id proporcionado directamente
+        val sessionId = "d73861a448249be383579ee02ae6ad87602f54ed"
+
+        if (sessionId.isNullOrBlank()) {
+            throw Exception("Error: session_id está vacío o no disponible.")
+        }
+
         val jsonBody = JSONObject().apply {
-            put("email", email)
-            put("password", password)
             put("name", name)
+            put("email", email)
             put("phone", phone)
-            put("company_id", companyId)
-            put("x_studio_domicilio_2", domicilio)
-            put("x_studio_sexo", sexo)
-            put("x_studio_curp", curp)
-            put("x_studio_fechanacimiento", fechaNacimiento)
-            put("x_studio_tiene_tarjeta_fisica", tieneTarjetaFisica)
+            put("sexo", sexo)
+            put("curp", curp)
+            put("fechaNacimiento", fechaNacimiento)
+            put("tieneTarjetaFisica", tieneTarjetaFisica)
         }
 
         val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
@@ -138,7 +123,7 @@ class ApiService(private val context: Context) {
             .url(registerUrl)
             .post(requestBody)
             .addHeader("Authorization", "Bearer $apiKey")
-            .addHeader("session_id", authenticate())  // Usar session_id
+            .addHeader("session_id", sessionId)  // Usar el session_id proporcionado directamente
             .build()
 
         return withContext(Dispatchers.IO) {
@@ -152,7 +137,8 @@ class ApiService(private val context: Context) {
         }
     }
 
-    // Obtener todos los productos habilitados (sin filtro de disponibilidad)
+
+    // Método para obtener todos los productos habilitados
     suspend fun getAllProducts(): List<Product>? {
         val sessionId = authenticate()  // Obtener el session_id
         val request = Request.Builder()
@@ -207,13 +193,8 @@ class ApiService(private val context: Context) {
                 null
             }
         }
-    }}
-
-
-
-
-
-
+    }
+}
 
 
 

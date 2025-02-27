@@ -60,15 +60,16 @@ class UserViewModel : ViewModel() {
 
     data class User(
         val id: String? = null,
-        val name: String? = null,
-        val email: String? = null,
-        val phone: String? = null,
-        val domicilio: String? = null,
-        val sexo: String? = null,
-        val curp: String? = null,
-        val fechaNacimiento: String? = null,
-        val tieneTarjetaFisica: Boolean? = null
+        val name: String,
+        val email: String,
+        val phone: String,
+        val domicilio: String?,
+        val sexo: String,
+        val curp: String,
+        val fechaNacimiento: String,
+        val tieneTarjetaFisica: Boolean
     )
+
 
 
     data class Product(
