@@ -63,6 +63,7 @@ fun AfiliateForm(navController: NavHostController) {
     var correo by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
     var tieneTarjetaFisica by remember { mutableStateOf(false) }
+    var esUsuarioApp by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -156,14 +157,15 @@ fun AfiliateForm(navController: NavHostController) {
                     sexo = sexo,
                     curp = curp,
                     fechaNacimiento = fechaNacimiento,
-                    tieneTarjetaFisica = tieneTarjetaFisica
+                    tieneTarjetaFisica = tieneTarjetaFisica,
+                    esUsuarioApp = true
                 )
                 if (response) {
                     saveDataToSharedPreferences()
                     "Usuario creado exitosamente"
                 } else {
                     //  "Error al crear el usuario"
-                    "Usuario creado exitosamente"
+                    "Error: Curp, Telefono o correo repetido"
                 }
             } catch (e: Exception) {
                 isError = true
@@ -230,7 +232,7 @@ fun AfiliateForm(navController: NavHostController) {
             OutlinedTextField(
                 value = correo,
                 onValueChange = { correo = it },
-                label = { Text("Correo (opcional)") },
+                label = { Text("Correo") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading
             )
@@ -283,7 +285,7 @@ fun AfiliateForm(navController: NavHostController) {
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp), // Espaciado entre botones
+                        .padding(bottom = 8.dp),
                     enabled = !isLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFFA726),

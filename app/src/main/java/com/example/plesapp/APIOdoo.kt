@@ -23,9 +23,10 @@ import okhttp3.*
 @OptIn(kotlinx.serialization.InternalSerializationApi::class)
 @Serializable
 data class Product(
+    val id: Int,
     val name: String,
-    val description: String,
-    val Imagen: String
+    val listPrice: Double,
+    val qtyAvailable: Int
 )
 
 @OptIn(kotlinx.serialization.InternalSerializationApi::class)
@@ -33,6 +34,7 @@ data class Product(
 data class ApiResponseProducts(
     val products: List<Product>
 )
+
 
 class ApiService(private val context: Context) {
     private val clientAPI = OkHttpClient()
@@ -49,7 +51,7 @@ class ApiService(private val context: Context) {
 
     // Método para autenticar al usuario y obtener el session_id
     suspend fun authenticate(): String {
-        if (sessionId != null) return sessionId!! // Usamos un session_id existente si es válido.
+        if (sessionId != null) return sessionId!!
 
         val json = """
         {
@@ -98,9 +100,9 @@ class ApiService(private val context: Context) {
         sexo: String,
         curp: String,
         fechaNacimiento: String,
-        tieneTarjetaFisica: Boolean
+        tieneTarjetaFisica: Boolean,
+        esUsuarioApp: Boolean
     ): Boolean {
-        // Usamos el session_id proporcionado directamente
         val sessionId = "d73861a448249be383579ee02ae6ad87602f54ed"
 
         if (sessionId.isNullOrBlank()) {
@@ -114,6 +116,7 @@ class ApiService(private val context: Context) {
             put("curp", curp)
             put("fechaNacimiento", fechaNacimiento)
             put("tieneTarjetaFisica", tieneTarjetaFisica)
+            put("esUsuarioApp", esUsuarioApp)
         }
 
         val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
@@ -122,7 +125,7 @@ class ApiService(private val context: Context) {
             .url(registerUrl)
             .post(requestBody)
             .addHeader("Authorization", "Bearer $apiKey")
-            .addHeader("session_id", sessionId)  // Usar el session_id proporcionado directamente
+            .addHeader("session_id", sessionId)
             .build()
 
         return withContext(Dispatchers.IO) {
@@ -137,62 +140,64 @@ class ApiService(private val context: Context) {
     }
 
 
-    // Método para obtener todos los productos habilitados
     suspend fun getAllProducts(): List<Product>? {
-        val sessionId = authenticate()  // Obtener el session_id
+        val sessionId = "d73861a448249be383579ee02ae6ad87602f54ed"
+        val apiUrl = productsUrl
+
         val request = Request.Builder()
-            .url(productsUrl)  // URL de la API que devuelve todos los productos
+            .url(apiUrl)
             .get()
-            .addHeader("Authorization", "Bearer $apiKey")  // Autorización con la clave API
-            .addHeader("session_id", sessionId)  // Enviar session_id
+            .addHeader("Authorization", "Bearer $apiKey")
+            .addHeader("session_id", sessionId)
             .build()
 
         return withContext(Dispatchers.IO) {
             try {
-                // Realizar la solicitud
                 val response = clientAPI.newCall(request).execute()
-
-                // Verificar si la respuesta es exitosa
                 if (response.isSuccessful) {
                     val responseBody = response.body?.string() ?: return@withContext null
-
-                    // Imprimir el cuerpo de la respuesta para depuración
                     println("Respuesta de la API de productos: $responseBody")
 
-                    val productsJsonArray = JSONArray(responseBody)
-                    val productList = mutableListOf<Product>()
 
-                    // Procesar cada producto en la respuesta JSON
+                    val responseJson = JSONObject(responseBody)
+                    val result = responseJson.optJSONObject("result")
+                    val productsJsonArray = result?.optJSONArray("products")
+
+
+                    if (productsJsonArray == null || productsJsonArray.length() == 0) {
+                        println("No se encontraron productos.")
+                        return@withContext null
+                    }
+
+                    val productList = mutableListOf<Product>()
                     for (i in 0 until productsJsonArray.length()) {
                         val productJson = productsJsonArray.getJSONObject(i)
                         val product = Product(
+                            id = productJson.getInt("id"),
                             name = productJson.getString("name"),
-                            description = productJson.getString("description"),
-                            Imagen = productJson.optString(
-                                "image",
-                                ""
-                            ) // Si no hay imagen, devolver cadena vacía
+                            listPrice = productJson.getDouble("price"),
+                            qtyAvailable = productJson.getDouble("stock").toInt()
                         )
                         productList.add(product)
                     }
 
-                    productList // Devolver la lista completa de productos
+                    productList
                 } else {
-                    // En caso de error en la respuesta
                     println("Error: ${response.code} - ${response.message}")
                     null
                 }
             } catch (e: IOException) {
-                // Manejo de excepciones en la llamada de red
                 println("Error al obtener productos: ${e.message}")
                 null
             } catch (e: Exception) {
-                // Capturar otros errores generales
                 println("Error inesperado: ${e.message}")
                 null
             }
         }
     }
+
+
+
 }
 
 

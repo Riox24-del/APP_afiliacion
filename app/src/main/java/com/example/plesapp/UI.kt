@@ -962,20 +962,23 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
     // Estado para los productos obtenidos y el estado de carga
     val products = remember { mutableStateOf(emptyList<Product>()) }
     var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Llamada para obtener los productos al iniciar la pantalla
     LaunchedEffect(Unit) {
         try {
-            // Obtener todos los productos, sin filtrar por disponibilidad
+            // Obtener todos los productos
             val allProducts = apiService.getAllProducts()
             Log.d("Subsidios", "All Products: $allProducts")
             if (allProducts != null) {
                 products.value = allProducts
+                errorMessage = null // Resetear cualquier error previo
             } else {
-                Log.e("Subsidios", "No se encontraron productos.")
+                errorMessage = "No se encontraron productos."
             }
         } catch (e: Exception) {
-            Log.e("Subsidios", "Error al obtener productos: ${e.message}")
+            errorMessage = "Error al obtener productos: ${e.message}"
+            Log.e("Subsidios", e.message.orEmpty())
         } finally {
             isLoading = false
         }
@@ -1014,39 +1017,45 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Manejo de carga y errores
             if (isLoading) {
-                // Mostrar el indicador de carga
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
+            } else if (errorMessage != null) {
+                // Mostrar mensaje de error si falla la carga
+                Text(
+                    text = errorMessage ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    fontStyle = FontStyle.Italic
+                )
+            } else if (filteredProducts.isEmpty()) {
+                // Mostrar mensaje si no hay resultados
+                Text(
+                    text = "No se encontraron productos.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic
+                )
             } else {
-                if (filteredProducts.isEmpty()) {
-                    // Mostrar mensaje si no hay resultados
-                    Text(
-                        text = "No se encontraron productos.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontStyle = FontStyle.Italic
-                    )
-                } else {
-                    // Usar LazyVerticalGrid para diseño tipo tienda
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        contentPadding = PaddingValues(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        itemsIndexed(filteredProducts) { index, product ->
-                            ProductCard(
-                                product = product,
-                                onClick = {
-                                    selectedProduct = product
-                                    showDetailsDialog = true
-                                }
-                            )
-                        }
+                // Usar LazyVerticalGrid para diseño tipo tienda
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(filteredProducts) { index, product ->
+                        ProductCard(
+                            product = product,
+                            onClick = {
+                                selectedProduct = product
+                                showDetailsDialog = true
+                            }
+                        )
                     }
                 }
             }
@@ -1059,33 +1068,7 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
             AlertDialog(
                 onDismissRequest = { showDetailsDialog = false },
                 title = { Text(product.name) },
-                text = {
-                    Column {
-                        Text(product.description)
-                        val bitmap = decodeBase64ToBitmap(product.Imagen)
-                        if (bitmap != null) {
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp)
-                                    .padding(top = 8.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp)
-                                    .background(Color.Gray),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("Imagen no disponible", color = Color.White)
-                            }
-                        }
-                    }
-                },
+
                 confirmButton = {
                     TextButton(onClick = { showDetailsDialog = false }) {
                         Text("Cerrar")
@@ -1095,7 +1078,6 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
         }
     }
 }
-
 
 
 //tarjeta del producto
@@ -1116,30 +1098,8 @@ fun ProductCard(product: Product, onClick: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Mostrar la imagen del producto
-            val bitmap = decodeBase64ToBitmap(product.Imagen)
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .background(Color.Gray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Imagen no disponible", color = Color.White)
-                }
-            }
 
-            // Mostrar el nombre del producto con maximo 8 caracteres
+            // Mostrar el nombre del producto con máximo 8 caracteres
             Text(
                 text = product.name.take(8) + if (product.name.length > 8) "..." else "",
                 fontWeight = FontWeight.Bold,
@@ -1150,19 +1110,24 @@ fun ProductCard(product: Product, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Mostrar la descripción corta
+            // Mostrar el precio y cantidad disponible
             Text(
-                text = product.description,
+                text = "Precio: \$${product.listPrice}",
                 style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
+                color = Color.Gray,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Text(
+                text = "Cantidad disponible: ${product.qtyAvailable}",
+                style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray,
                 modifier = Modifier.fillMaxWidth()
             )
         }
     }
 }
+
 
 
 

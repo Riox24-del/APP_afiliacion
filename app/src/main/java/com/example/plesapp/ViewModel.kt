@@ -66,16 +66,19 @@ class UserViewModel : ViewModel() {
         val sexo: String,
         val curp: String,
         val fechaNacimiento: String,
-        val tieneTarjetaFisica: Boolean
+        val tieneTarjetaFisica: Boolean,
+        val esUsuarioApp: Boolean
     )
 
 
 
     data class Product(
+        val id: Int,
         val name: String,
-        val description: String,
-        val Imagen: String = ""
+        val listPrice: Double,
+        val qtyAvailable: Int
     )
+
 }
 
 
