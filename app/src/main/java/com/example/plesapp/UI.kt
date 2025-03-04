@@ -139,6 +139,8 @@ fun MainNavigation(userViewModel: UserViewModel, apiService: ApiService) {
 }
 
 
+
+
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun MyApp(navController: NavHostController, userViewModel: UserViewModel) {
@@ -1126,7 +1128,9 @@ fun ProductCard(product: Product, onClick: () -> Unit) {
             )
         }
     }
+
 }
+
 
 
 

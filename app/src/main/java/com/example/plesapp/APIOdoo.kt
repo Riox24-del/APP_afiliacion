@@ -106,7 +106,7 @@ class ApiService(private val context: Context) {
         val sessionId = "d73861a448249be383579ee02ae6ad87602f54ed"
 
         if (sessionId.isNullOrBlank()) {
-            throw Exception("Error: session_id está vacío o no disponible.")
+            throw Exception("Error: la sesión no esta disponible.")
         }
         val jsonBody = JSONObject().apply {
             put("name", name)
@@ -145,7 +145,7 @@ class ApiService(private val context: Context) {
         val apiUrl = productsUrl
 
         val request = Request.Builder()
-            .url(apiUrl)
+            .url(apiUrl) 
             .get()
             .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("session_id", sessionId)
@@ -158,12 +158,12 @@ class ApiService(private val context: Context) {
                     val responseBody = response.body?.string() ?: return@withContext null
                     println("Respuesta de la API de productos: $responseBody")
 
-
+                    
                     val responseJson = JSONObject(responseBody)
-                    val result = responseJson.optJSONObject("result")
-                    val productsJsonArray = result?.optJSONArray("products")
+                    val result = responseJson.optJSONObject("result") 
+                    val productsJsonArray = result?.optJSONArray("products") 
 
-
+                   
                     if (productsJsonArray == null || productsJsonArray.length() == 0) {
                         println("No se encontraron productos.")
                         return@withContext null
@@ -181,7 +181,7 @@ class ApiService(private val context: Context) {
                         productList.add(product)
                     }
 
-                    productList
+                    productList 
                 } else {
                     println("Error: ${response.code} - ${response.message}")
                     null

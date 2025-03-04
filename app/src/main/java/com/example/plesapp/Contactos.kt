@@ -1,7 +1,12 @@
 package com.example.plesapp
 
 import android.content.Context
+import android.Manifest
+
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,6 +78,7 @@ fun AfiliateForm(navController: NavHostController) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val hasAcceptedPolicies = remember { mutableStateOf(false) }
+    val cameraPermission = Manifest.permission.CAMERA
 
     // Función para cargar los datos guardados en SharedPreferences
     fun loadDataFromSharedPreferences() {
@@ -90,6 +96,17 @@ fun AfiliateForm(navController: NavHostController) {
             "AfiliateForm",
             "Datos cargados: Nombre=$nombre, Sexo=$sexo, CURP=$curp, FechaNacimiento=$fechaNacimiento, Telefono=$telefono, Correo=$correo"
         )
+    }
+
+    // Lanzador para solicitar permisos
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            navController.navigate("camera")
+        } else {
+            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
+        }
     }
 
     // Llamar a la función para cargar los datos cuando el Composable se inicie
@@ -305,7 +322,7 @@ fun AfiliateForm(navController: NavHostController) {
 
                 // Botón para abrir la cámara
                 Button(
-                    onClick = { navController.navigate("camera") },
+                    onClick = { launcher.launch(cameraPermission) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFFA726),
