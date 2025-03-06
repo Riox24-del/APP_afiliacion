@@ -966,25 +966,35 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Llamada para obtener los productos al iniciar la pantalla
     LaunchedEffect(Unit) {
         try {
+            // Autenticar y obtener el session_id
+            val sessionId = try {
+                apiService.authenticate()
+            } catch (e: Exception) {
+                errorMessage = "Error de autenticación: ${e.message}"
+                Log.e("Subsidios", "Error de autenticación: ${e.message}")
+                return@LaunchedEffect
+            }
+
             // Obtener todos los productos
-            val allProducts = apiService.getAllProducts()
-            Log.d("Subsidios", "All Products: $allProducts")
-            if (allProducts != null) {
-                products.value = allProducts
-                errorMessage = null // Resetear cualquier error previo
-            } else {
-                errorMessage = "No se encontraron productos."
+            isLoading = true
+            apiService.getAllProducts().onSuccess { productList ->
+                products.value = productList
+                errorMessage = null
+                Log.d("Subsidios", "Productos obtenidos: ${productList.size}")
+            }.onFailure { error ->
+                errorMessage = "Error al obtener productos: ${error.message}"
+                Log.e("Subsidios", "Error al obtener productos: ${error.message}")
             }
         } catch (e: Exception) {
-            errorMessage = "Error al obtener productos: ${e.message}"
-            Log.e("Subsidios", e.message.orEmpty())
+            errorMessage = "Error inesperado: ${e.message}"
+            Log.e("Subsidios", "Error inesperado: ${e.message}")
         } finally {
             isLoading = false
         }
     }
+
 
     // Filtrar la lista de productos basándose en la consulta de búsqueda
     val filteredProducts = products.value.filter {

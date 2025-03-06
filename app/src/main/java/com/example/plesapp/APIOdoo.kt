@@ -18,6 +18,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import okhttp3.*
+import org.json.JSONException
 
 
 @OptIn(kotlinx.serialization.InternalSerializationApi::class)
@@ -49,9 +50,8 @@ class ApiService(private val context: Context) {
 
     private var sessionId: String? = null
 
-    // Método para autenticar al usuario y obtener el session_id
     suspend fun authenticate(): String {
-        if (sessionId != null) return sessionId!!
+        sessionId?.let { return it } // Si ya hay sesión, la devuelve
 
         val json = """
         {
@@ -68,30 +68,28 @@ class ApiService(private val context: Context) {
         val authRequest = Request.Builder()
             .url(authUrl)
             .post(json.toRequestBody("application/json".toMediaType()))
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "application/json")
             .build()
 
         return withContext(Dispatchers.IO) {
             try {
                 val response = clientAPI.newCall(authRequest).execute()
                 val responseBody = response.body?.string() ?: ""
-                Log.d("ApiService", "Respuesta de autenticación: $responseBody")
 
-                if (response.isSuccessful) {
-                    val jsonResponse = JSONObject(responseBody)
-                    if (jsonResponse.has("result") && jsonResponse.getJSONObject("result").has("session_id")) {
-                        sessionId = jsonResponse.getJSONObject("result").getString("session_id")
-                        sessionId!!
-                    } else {
-                        throw Exception("Error: no se encontró session_id en la respuesta.")
-                    }
-                } else {
-                    throw Exception("Error de autenticación: ${response.code}")
-                }
-            } catch (e: IOException) {
-                throw Exception("Error de red: ${e.message}")
+                if (!response.isSuccessful) throw Exception("Error de autenticación: ${response.code}")
+
+                val jsonResponse = JSONObject(responseBody)
+                sessionId = jsonResponse.optJSONObject("result")?.optString("session_id")
+
+                sessionId ?: throw Exception("No se encontró session_id en la respuesta.")
+            } catch (e: Exception) {
+                Log.e("ApiService", "Error en autenticación: ${e.message}")
+                throw e
             }
         }
     }
+
 
     suspend fun createPortalUser(
         name: String,
@@ -140,65 +138,62 @@ class ApiService(private val context: Context) {
     }
 
 
-    suspend fun getAllProducts(): List<Product>? {
-        val sessionId = "d73861a448249be383579ee02ae6ad87602f54ed"
-        val apiUrl = productsUrl
-
+    suspend fun getAllProducts(): Result<List<Product>> {
+        val sessionId = authenticate()
         val request = Request.Builder()
-            .url(apiUrl) 
+            .url(productsUrl)
             .get()
-            .addHeader("Authorization", "Bearer $apiKey")
-            .addHeader("session_id", sessionId)
+            .addHeader("Cookie", "session_id=$sessionId")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "application/json")
             .build()
+        Log.d("ApiService", "Session ID obtenido: $sessionId")
+
 
         return withContext(Dispatchers.IO) {
             try {
                 val response = clientAPI.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val responseBody = response.body?.string() ?: return@withContext null
-                    println("Respuesta de la API de productos: $responseBody")
+                val responseBody = response.body?.string() ?: return@withContext Result.failure(Exception("Respuesta vacía"))
 
-                    
-                    val responseJson = JSONObject(responseBody)
-                    val result = responseJson.optJSONObject("result") 
-                    val productsJsonArray = result?.optJSONArray("products") 
+                if (!response.isSuccessful) {
+                    Log.e("ApiService", "Error ${response.code}: ${response.message}")
+                    return@withContext Result.failure(Exception("Error HTTP: ${response.code}"))
+                }
 
-                   
-                    if (productsJsonArray == null || productsJsonArray.length() == 0) {
-                        println("No se encontraron productos.")
-                        return@withContext null
-                    }
+                val result = JSONObject(responseBody).optJSONObject("result")
+                val productsJsonArray = result?.optJSONArray("products")
 
-                    val productList = mutableListOf<Product>()
-                    for (i in 0 until productsJsonArray.length()) {
-                        val productJson = productsJsonArray.getJSONObject(i)
-                        val product = Product(
+                if (productsJsonArray == null || productsJsonArray.length() == 0) {
+                    return@withContext Result.failure(Exception("No se encontraron productos."))
+                }
+
+                val productList = mutableListOf<Product>()
+                for (i in 0 until productsJsonArray.length()) {
+                    val productJson = productsJsonArray.getJSONObject(i)
+                    productList.add(
+                        Product(
                             id = productJson.getInt("id"),
                             name = productJson.getString("name"),
                             listPrice = productJson.getDouble("price"),
                             qtyAvailable = productJson.getDouble("stock").toInt()
                         )
-                        productList.add(product)
-                    }
-
-                    productList 
-                } else {
-                    println("Error: ${response.code} - ${response.message}")
-                    null
+                    )
                 }
+
+                Result.success(productList)
             } catch (e: IOException) {
-                println("Error al obtener productos: ${e.message}")
-                null
-            } catch (e: Exception) {
-                println("Error inesperado: ${e.message}")
-                null
+                Log.e("ApiService", "Error de red: ${e.message}")
+                Result.failure(e)
+            } catch (e: JSONException) {
+                Log.e("ApiService", "Error al parsear la respuesta: ${e.message}")
+                Result.failure(e)
             }
         }
     }
-
-
-
 }
+
+
+
 
 
 
