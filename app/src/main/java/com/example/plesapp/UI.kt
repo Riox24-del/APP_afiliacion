@@ -70,6 +70,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import android.Manifest
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.pm.PackageManager
@@ -112,6 +113,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.core.app.ActivityCompat
 import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
 import coil.compose.rememberImagePainter
@@ -358,7 +360,6 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
     // Estado para controlar el efecto de "shake" (teléfono)
     val infiniteTransition = rememberInfiniteTransition()
 
-
     // Estado para controlar el movimiento vertical (ubicación)
     val verticalOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -369,216 +370,191 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
         ), label = ""
     )
 
-
     Scaffold(
         bottomBar = { MyAppNavBar(navController) }
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()) // Permite el desplazamiento de todo el contenido
         ) {
-            // Imagen principal con bordes redondeados
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .shadow(4.dp, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.inicio),
-                    contentDescription = "Logo",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Título con color naranja
-            Text(
-                text = "¡Síguenos en nuestras redes sociales!",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    color = Color(0xFFFFA726),
-                    fontWeight = FontWeight.Bold
-                ),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Botones con diseño
-            Column {
-                ElevatedButton(
-                    onClick = {
-                        val intent =
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://www.facebook.com/plesmx"))
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.elevatedButtonColors(
-                        containerColor = Color(0xFF26BAFF),
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+                // Imagen principal con bordes redondeados
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .shadow(4.dp, RoundedCornerShape(16.dp))
                 ) {
-                    Text("Facebook")
+                    Image(
+                        painter = painterResource(id = R.drawable.inicio),
+                        contentDescription = "Logo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                ElevatedButton(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://plesmx.com/"))
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.elevatedButtonColors(
-                        containerColor = Color(0xFFFFA726),
-                        contentColor = MaterialTheme.colorScheme.onSecondary
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Visita nuestra página web")
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-/*
+                // Título con color naranja
                 Text(
-                    text = "¿Ya estás afiliado? Inicia Sesión",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center
+                    text = "¡Síguenos en nuestras redes sociales!",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color = Color(0xFFFFA726),
+                        fontWeight = FontWeight.Bold
                     ),
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                OutlinedButton(
-                    onClick = { navController.navigate("login") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color(0xFFFFA726)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFFFFA726)
-                    )
-                ) {
-                    Text("Iniciar sesión")
-                }*/
-
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Información de contacto
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AccessTime,
-                        contentDescription = "Horario",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Lunes a Viernes en un horario de 09:00 am a 19:00 pm, Sábado de 09:00 am a 14:00 pm",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onBackground
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-// Ícono de ubicación, texto de dirección y flecha
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Dirección",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .offset(y = verticalOffset.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    val context = LocalContext.current // Obtener el contexto actual
-
-                    // Texto clicable para abrir Google Maps
-                    ClickableText(
-                        text = AnnotatedString("Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax."),
-                        style = TextStyle(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            textAlign = TextAlign.Center
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
+                // Botones con diseño
+                Column {
+                    ElevatedButton(
                         onClick = {
-                            openGoogleMaps(context)
-                        }
-                    )}
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Icono de flecha debajo del texto
-                    Icon(
-                        imageVector = Icons.Default.ArrowForward,
-                        contentDescription = "Abrir en Google Maps",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clickable {
-                                openGoogleMaps(context)
-                            }
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = "Teléfono",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .size(20.dp)
-
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Teléfono: 529511433017",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurface
+                            val intent =
+                                Intent(Intent.ACTION_VIEW, Uri.parse("https://www.facebook.com/plesmx"))
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.elevatedButtonColors(
+                            containerColor = Color(0xFF26BAFF),
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
-                        textAlign = TextAlign.Center
-                    )
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Facebook")
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ElevatedButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://plesmx.com/"))
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.elevatedButtonColors(
+                            containerColor = Color(0xFFFFA726),
+                            contentColor = MaterialTheme.colorScheme.onSecondary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Visita nuestra página web")
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Mostrar "Abierto ahora" o "Cerrado ahora"
-                BusinessStatusText()
+                // Información de contacto
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = "Horario",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Lunes a Viernes 09:00 am - 19:00 pm, Sábado 09:00 am - 14:00 pm",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.onBackground
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Ícono de ubicación, texto de dirección y flecha
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = "Dirección",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .offset(y = verticalOffset.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        ClickableText(
+                            text = AnnotatedString("Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax."),
+                            style = TextStyle(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                openGoogleMaps(context)
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Icon(
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = "Abrir en Google Maps",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clickable {
+                                    openGoogleMaps(context)
+                                }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Phone,
+                            contentDescription = "Teléfono",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Teléfono: 529511433017",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Mostrar "Abierto ahora" o "Cerrado ahora"
+                    BusinessStatusText()
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
-
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
+}
 
 // Función para abrir Google Maps
 private fun openGoogleMaps(context: Context) {
@@ -919,10 +895,9 @@ fun CameraScreen(navController: NavHostController) {
 }
 
 
-    @Composable
+@Composable
 fun PoliticaInformacionScreen(navController: NavHostController) {
     val context = LocalContext.current
-
 
     Column(
         modifier = Modifier
@@ -936,10 +911,32 @@ fun PoliticaInformacionScreen(navController: NavHostController) {
         )
 
         Text(
-            text = "Al aceptar, estás de acuerdo con nuestras políticas de privacidad y el manejo de tus datos personales. "
-                    + "Asegúrate de leerlas detenidamente antes de continuar.",
+            text = "Al aceptar, estás de acuerdo con nuestras políticas de privacidad y el manejo de tus datos personales. " +
+                    "Asegúrate de leerlas detenidamente antes de continuar.",
             style = MaterialTheme.typography.bodyMedium
         )
+
+        Text(
+            text = "Importante: La información escaneada no se guardará hasta que el usuario lo autorice. " +
+                    "Para utilizar la cámara y la galería, se requieren permisos que deben ser otorgados por el usuario. " +
+                    "La cámara solo se activará cuando se seleccione la opción de 'Tomar foto', no permanecerá encendida y no se utilizará para espiar a ningún usuario. " +
+                    "La aplicación Ples no hace mal uso de su información.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Red
+        )
+
+        Button(
+            onClick = {
+                requestPermissions(context) // Función para solicitar permisos
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF26BAFF),
+                contentColor = Color.White
+            )
+        ) {
+            Text("Otorgar permisos")
+        }
 
         Button(
             onClick = { navController.popBackStack() },
@@ -953,6 +950,23 @@ fun PoliticaInformacionScreen(navController: NavHostController) {
         }
     }
 }
+
+fun requestPermissions(context: Context) {
+    val permissions = arrayOf(
+        Manifest.permission.CAMERA,
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
+    )
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        ActivityCompat.requestPermissions(
+            context as Activity,
+            permissions,
+            100
+        )
+    }
+}
+
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable

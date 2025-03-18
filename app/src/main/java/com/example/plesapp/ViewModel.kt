@@ -67,7 +67,8 @@ class UserViewModel : ViewModel() {
         val curp: String,
         val fechaNacimiento: String,
         val tieneTarjetaFisica: Boolean,
-        val esUsuarioApp: Boolean
+        val esUsuarioApp: Boolean,
+        val barcode: String
     )
 
 

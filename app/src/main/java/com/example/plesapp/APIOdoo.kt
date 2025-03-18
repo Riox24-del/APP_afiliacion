@@ -51,7 +51,7 @@ class ApiService(private val context: Context) {
     private var sessionId: String? = null
 
     suspend fun authenticate(): String {
-        sessionId?.let { return it } // Si ya hay sesión, la devuelve
+        sessionId?.let { return it }
 
         val json = """
         {
@@ -99,7 +99,8 @@ class ApiService(private val context: Context) {
         curp: String,
         fechaNacimiento: String,
         tieneTarjetaFisica: Boolean,
-        esUsuarioApp: Boolean
+        esUsuarioApp: Boolean,
+        barcode: String
     ): Boolean {
         val sessionId = "d73861a448249be383579ee02ae6ad87602f54ed"
 
@@ -115,6 +116,7 @@ class ApiService(private val context: Context) {
             put("fechaNacimiento", fechaNacimiento)
             put("tieneTarjetaFisica", tieneTarjetaFisica)
             put("esUsuarioApp", esUsuarioApp)
+            put("barcode", barcode)
         }
 
         val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
@@ -148,8 +150,7 @@ class ApiService(private val context: Context) {
             .addHeader("Accept", "application/json")
             .build()
         Log.d("ApiService", "Session ID obtenido: $sessionId")
-
-
+        
         return withContext(Dispatchers.IO) {
             try {
                 val response = clientAPI.newCall(request).execute()

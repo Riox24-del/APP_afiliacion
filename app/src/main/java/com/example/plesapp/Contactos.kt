@@ -69,6 +69,7 @@ fun AfiliateForm(navController: NavHostController) {
     var telefono by remember { mutableStateOf("") }
     var tieneTarjetaFisica by remember { mutableStateOf(false) }
     var esUsuarioApp by remember { mutableStateOf(false) }
+    var barcode by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -89,12 +90,12 @@ fun AfiliateForm(navController: NavHostController) {
         fechaNacimiento = sharedPreferences.getString("fechaNacimiento", "") ?: ""
         telefono = sharedPreferences.getString("telefono", "") ?: ""
         correo = sharedPreferences.getString("correo", "") ?: ""
-
+        barcode = sharedPreferences.getString("barcode", "") ?: ""
 
         //log para depuracion
         Log.d(
             "AfiliateForm",
-            "Datos cargados: Nombre=$nombre, Sexo=$sexo, CURP=$curp, FechaNacimiento=$fechaNacimiento, Telefono=$telefono, Correo=$correo"
+            "Datos cargados: Nombre=$nombre, Sexo=$sexo, CURP=$curp, FechaNacimiento=$fechaNacimiento, Telefono=$telefono, Correo=$correo, Barcode=$barcode"
         )
     }
 
@@ -124,11 +125,11 @@ fun AfiliateForm(navController: NavHostController) {
             telefono.isNotBlank() && telefono.length == 10 && telefono.all { it.isDigit() }
         val isCorreoValid =
             correo.isNotBlank() && android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()
-
+        val isBarcodeValid = barcode.isNotBlank()
 
         isError =
             !(isNombreValid &&  isSexoValid && isCurpValid && isFechaNacimientoValid &&
-                    isTelefonoValid && isCorreoValid )
+                    isTelefonoValid && isCorreoValid  && isBarcodeValid)
 
         message = when {
             !isNombreValid -> "El nombre es obligatorio."
@@ -138,7 +139,7 @@ fun AfiliateForm(navController: NavHostController) {
             !isFechaNacimientoValid -> "La fecha de nacimiento es obligatoria."
             !isTelefonoValid -> "El teléfono debe tener 10 dígitos numéricos."
              !isCorreoValid -> "El correo electrónico no es válido."
-
+            !isBarcodeValid -> "El código de barras es obligatorio y unico"
             else -> ""
         }
 
@@ -155,6 +156,7 @@ fun AfiliateForm(navController: NavHostController) {
         editor.putString("fechaNacimiento", fechaNacimiento)
         editor.putString("telefono", telefono)
         editor.putString("correo", correo)
+        editor.putString("barcode", barcode)
 
         editor.apply()
     }
@@ -175,14 +177,15 @@ fun AfiliateForm(navController: NavHostController) {
                     curp = curp,
                     fechaNacimiento = fechaNacimiento,
                     tieneTarjetaFisica = tieneTarjetaFisica,
-                    esUsuarioApp = true
+                    esUsuarioApp = true,
+                    barcode = barcode
                 )
                 if (response) {
                     saveDataToSharedPreferences()
                     "Usuario creado exitosamente"
                 } else {
                     //  "Error al crear el usuario"
-                    "Error: Curp, Telefono o correo repetido"
+                    "Error: Curp, Telefono, Correo o Código de barras repetido(s)"
                 }
             } catch (e: Exception) {
                 isError = true
@@ -264,7 +267,16 @@ fun AfiliateForm(navController: NavHostController) {
                 isError = isError && (telefono.isBlank() || telefono.length != 10 || !telefono.all { it.isDigit() }),
                 enabled = !isLoading
             )
+            Spacer(modifier = Modifier.height(16.dp))
 
+            OutlinedTextField(
+                value = barcode,
+                onValueChange = {barcode = it},
+                label = {Text("Código de barras")},
+                modifier = Modifier.fillMaxWidth(),
+                isError = isError && barcode.isBlank(),
+                enabled = !isLoading
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
