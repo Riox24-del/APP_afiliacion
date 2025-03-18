@@ -149,8 +149,7 @@ class ApiService(private val context: Context) {
             .addHeader("Content-Type", "application/json")
             .addHeader("Accept", "application/json")
             .build()
-        Log.d("ApiService", "Session ID obtenido: $sessionId")
-        
+
         return withContext(Dispatchers.IO) {
             try {
                 val response = clientAPI.newCall(request).execute()
@@ -161,12 +160,12 @@ class ApiService(private val context: Context) {
                     return@withContext Result.failure(Exception("Error HTTP: ${response.code}"))
                 }
 
-                val result = JSONObject(responseBody).optJSONObject("result")
-                val productsJsonArray = result?.optJSONArray("products")
-
-                if (productsJsonArray == null || productsJsonArray.length() == 0) {
-                    return@withContext Result.failure(Exception("No se encontraron productos."))
+                val jsonResponse = JSONObject(responseBody)
+                if (!jsonResponse.optBoolean("success", false)) {
+                    return@withContext Result.failure(Exception("La API no devolvió éxito"))
                 }
+
+                val productsJsonArray = jsonResponse.optJSONArray("products") ?: return@withContext Result.failure(Exception("No se encontraron productos."))
 
                 val productList = mutableListOf<Product>()
                 for (i in 0 until productsJsonArray.length()) {
@@ -176,7 +175,7 @@ class ApiService(private val context: Context) {
                             id = productJson.getInt("id"),
                             name = productJson.getString("name"),
                             listPrice = productJson.getDouble("price"),
-                            qtyAvailable = productJson.getDouble("stock").toInt()
+                            qtyAvailable = productJson.getInt("stock")
                         )
                     )
                 }
@@ -191,6 +190,7 @@ class ApiService(private val context: Context) {
             }
         }
     }
+
 }
 
 
