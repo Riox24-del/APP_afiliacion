@@ -1067,7 +1067,6 @@ fun Subsidios(navController: NavHostController, userViewModel: UserViewModel, ap
                     fontStyle = FontStyle.Italic
                 )
             } else {
-                // Usar LazyVerticalGrid para diseño tipo tienda
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     contentPadding = PaddingValues(8.dp),

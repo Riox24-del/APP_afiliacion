@@ -157,7 +157,7 @@ class ApiService(private val context: Context) {
 
                 if (!response.isSuccessful) {
                     Log.e("ApiService", "Error ${response.code}: ${response.message}")
-                    return@withContext Result.failure(Exception("Error HTTP: ${response.code}"))
+                    return@withContext Result.failure(Exception("Error de red: ${response.code}"))
                 }
 
                 val jsonResponse = JSONObject(responseBody)
