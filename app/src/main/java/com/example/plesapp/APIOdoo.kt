@@ -1,23 +1,16 @@
 package com.example.plesapp
 
-import android.R.attr.apiKey
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
-import okhttp3.*
 import org.json.JSONException
 
 
@@ -64,7 +57,6 @@ class ApiService(private val context: Context) {
             }
         }
         """.trimIndent()
-
         val authRequest = Request.Builder()
             .url(authUrl)
             .post(json.toRequestBody("application/json".toMediaType()))
