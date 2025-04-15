@@ -124,7 +124,7 @@ fun AnimatedSplashScreen() {
     ) {
         // Texto que se mueve desde arriba
         Text(
-            text = "PLATAFORMA LATINOAMERICANA ECONÓMICA Y SOCIAL A. C.",
+            text = "Texto inicio1.",
             fontSize = 24.sp,
             color = Color.White,
             textAlign = TextAlign.Center,
@@ -134,7 +134,7 @@ fun AnimatedSplashScreen() {
 
         // Texto que se mueve desde abajo
         Text(
-            text = "Aumentando sensiblemente el poder adquisitivo de las familias mexicanas",
+            text = "Texto inicio2",
             fontSize = 16.sp,
             color = Color.White,
             textAlign = TextAlign.Center,

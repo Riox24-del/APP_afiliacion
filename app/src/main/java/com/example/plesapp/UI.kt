@@ -111,8 +111,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-//NOTA:los logs se pueden eliminar, solo se usaron para debug
-
 @Composable
 fun MainNavigation(userViewModel: UserViewModel, apiService: ApiService) {
     val navController = rememberNavController()
@@ -128,7 +126,6 @@ fun MainNavigation(userViewModel: UserViewModel, apiService: ApiService) {
         composable("politicaInformacion") { PoliticaInformacionScreen(navController) }
     }
 }
-
 
 
 
@@ -382,7 +379,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.inicio),
-                        contentDescription = "Logo",
+                        contentDescription = "Home",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -408,7 +405,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                     ElevatedButton(
                         onClick = {
                             val intent =
-                                Intent(Intent.ACTION_VIEW, Uri.parse("https://www.facebook.com/plesmx"))
+                                Intent(Intent.ACTION_VIEW, Uri.parse("facebook"))
                             context.startActivity(intent)
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -425,7 +422,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
 
                     ElevatedButton(
                         onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://plesmx.com/"))
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("Sitio web/"))
                             context.startActivity(intent)
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -485,7 +482,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                         Spacer(modifier = Modifier.height(8.dp))
 
                         ClickableText(
-                            text = AnnotatedString("Privada de, C. Prolongación Eucaliptos 105, Ricardo Flores Magon, 68020 Oaxaca de Juárez, Oax."),
+                            text = AnnotatedString("Maps."),
                             style = TextStyle(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center
@@ -525,7 +522,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Teléfono: 529511433017",
+                            text = "Teléfono: 0000000",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
@@ -547,7 +544,7 @@ fun Inicio(navController: NavHostController, userViewModel: UserViewModel) {
 
 // Función para abrir Google Maps
 private fun openGoogleMaps(context: Context) {
-    val mapsUrl = "https://maps.app.goo.gl/Xp2j7CgP8nrnaCok6"
+    val mapsUrl = "maps6"
     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(mapsUrl)).apply {
         setPackage("com.google.android.apps.maps")
     }
