@@ -8,7 +8,6 @@ import androidx.compose.material3.MaterialTheme
 
 class MainActivity : ComponentActivity() {
     private val userViewModel by viewModels<UserViewModel>()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val apiService = ApiService(this)

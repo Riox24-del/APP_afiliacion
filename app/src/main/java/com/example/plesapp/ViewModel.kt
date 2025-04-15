@@ -54,7 +54,6 @@ class UserViewModel : ViewModel() {
     fun getUserEmail(): String? = userState.value?.email
     fun isUserLoggedIn(): Boolean = userState.value != null
 
-
     data class User(
         val id: String? = null,
         val name: String,

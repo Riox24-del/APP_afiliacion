@@ -362,7 +362,6 @@ fun AfiliateForm(navController: NavHostController) {
     }
 }
 
-
 @Composable
 fun SexoSelector(
     sexo: String,

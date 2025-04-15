@@ -82,7 +82,6 @@ class ApiService(private val context: Context) {
         }
     }
 
-
     suspend fun createPortalUser(
         name: String,
         email: String,
@@ -130,7 +129,6 @@ class ApiService(private val context: Context) {
             }
         }
     }
-
 
     suspend fun getAllProducts(): Result<List<Product>> {
         val sessionId = authenticate()

@@ -17,6 +17,7 @@ fun ImageProxy.toBitmap(): Bitmap {
     return BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size)
 }
 
+
 // Conversión manual de YUV_420_888 a NV21
 fun yuv420888ToNv21(image: ImageProxy): ByteArray {
     val yPlane = image.planes[0]

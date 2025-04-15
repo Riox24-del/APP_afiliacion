@@ -679,7 +679,6 @@ fun CameraScreen(navController: NavHostController) {
             imageLoadedMessage = null
         }
     }
-
     // Permisos para acceder al almacenamiento
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()

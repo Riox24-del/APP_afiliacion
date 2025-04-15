@@ -352,7 +352,6 @@ fun BusinessStatusText() {
         modifier = Modifier.fillMaxWidth()
     )
 }
-
 // Función para decodificar la imagen de base64 a Bitmap
 fun decodeBase64ToBitmap(base64: String): Bitmap? {
     return try {
