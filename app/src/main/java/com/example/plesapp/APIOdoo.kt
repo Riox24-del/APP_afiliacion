@@ -29,17 +29,17 @@ data class ApiResponseProducts(
     val products: List<Product>
 )
 
-
+//aqui vam tus rutas generadas desde tu modulo api(Odoo)
 class ApiService(private val context: Context) {
     private val clientAPI = OkHttpClient()
-    private val apiKey = "d603725815bef5701e3769f95e2402d2d7412715"
-    private val baseUrl = "https://plesmx.com"
+    private val apiKey = "API"
+    private val baseUrl = "Sitio web"
     private val authUrl = "$baseUrl/web/session/authenticate"
     private val registerUrl = "$baseUrl/api/create_contact"
     private val productsUrl = "$baseUrl/api/products"
-    private val database = "ples"
-    private val email = "administrador@plesmx.com"
-    private val password = "admin"
+    private val database = "db"
+    private val email = "usuario"
+    private val password = "pass"
 
     private var sessionId: String? = null
 
@@ -94,7 +94,7 @@ class ApiService(private val context: Context) {
         esUsuarioApp: Boolean,
         barcode: String
     ): Boolean {
-        val sessionId = "d73861a448249be383579ee02ae6ad87602f54ed"
+        val sessionId = authenticate()
 
         if (sessionId.isNullOrBlank()) {
             throw Exception("Error: la sesión no esta disponible.")
